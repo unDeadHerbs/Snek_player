@@ -1,0 +1,3 @@
+[submodule "Console-IO"]
+	path = Console-IO
+	url = git@github.com:unDeadHerbs/Console-IO.git
