@@ -1,0 +1,74 @@
+* Copied form Journal
+  In [[https://www.youtube.com/watch?v=TOpBcfbAgPg][How to Win Snake: The UNKILLABLE Snake AI]] AlphaPhoenix is
+  responding to [[https://www.youtube.com/watch?v=tjQIO1rqTBE][I Created a PERFECT SNAKE A.I.]] by Code Bullet.
+
+  I don't think finding a full Hamiltonian path is needed.  The board
+  is guaranteed to be connected by the rules of the game.  As such the
+  head need only be able to reach a valid path from the apple to the
+  current tail to guarantee non-death.  Is that correct?  Yes, in the
+  worst case end game where there are a large number of small bubbles
+  around the map, the head needs to collect up those bubbles until
+  there is enough space to grab the apple.  This will always be
+  possible, because if a single bubble is stranded it must have a
+  corner surrounded by three or more adjacent tail parts.  If there
+  are exactly three then the bubble can be moved, if there are more
+  than three then the bubble can also be moved.  These bubbles can
+  then be collected together until they are in the path of the head
+  following the tail.  It would be better if this was avoided, but can
+  be solved as a problem when the end game is reached.  I suspect the
+  algorithm will end up looking like a three search of possible
+  futures for a path that meats the prior criteria.  Once the game is
+  in this end state where bubbles need moving the tree will have great
+  depth but almost no breadth.
+
+  This trusting in the existence of a path by knowing that the tail is
+  a long enough loop means that the board can be very large and need
+  not be in a normal grid; either by not being in a square arena or by
+  not using the normal tile rules (hexagons or triangles instead).
+  Merely as long as a Hamiltonian path exists on the map it will be
+  reachable by following the tail and re-adding parts of the map to
+  the path.
+
+  The terminal bubble case described above can be avoided by not
+  allowing sections of the map smaller than a given size from being
+  cut off.  This restriction will prevent the snake from building the
+  bubbles and will cause ...
+
+  Searching this tree is an interesting problem, an A* like metric can
+  be used, where futures that have a lower heuristic cost plus current
+  cost are considered first.  That doesn't really describe an
+  algorithm.  A dual path search is being performed, one from the head
+  to the apple and one from the apple to the future tail.  Both of
+  these trees are being trimmed by the above "no bubbles"
+  restriction.  A* can be modified to consider this dual ended
+  search.
+
+  Take a board position: A current snake length, positions, and apple
+  position.  (The length after eating an apple and the board size
+  (connectivity) are both parts of the game.)  We already know that
+  the apple will be on the path once found.  A quick first trial is to
+  find if any path to the apple exists, if none, head towards the tail
+  on shortest path that maintains the rules.  This can be improved by
+  seeing where the tail must not be and how long it will be until the
+  tail isn't in the way.  That fits with the ability to know the
+  future.  After each step the board will have changed, so the
+  possible path to the apple will have changed.  This means that A*
+  will need a different way of telling if two paths to a node are to
+  the same node, since the path to the node is important in the node's
+  identity.  That's fine the ability to consider two paths to a node
+  and remove the lesser isn't important in A*.  Using normal A* with
+  the boundaries moving with the current distance means that the
+  "sand" that fills around invalid paths will have to fill a 3 or 4
+  dimensional bucket as the search happens rather than the regular 2.
+  Once a path to the apple is found the same can be done to find a
+  path to the tail (with a bubble).
+
+  An even better snake AI would take into account the average distance
+  to all other points after eating the apple, since that's the average
+  distance to the next apple.  This would then prevent the snake from
+  building blocks to parts of the map that aren't needed, if a portion
+  of the map can be not blocked off by taking an extra two or three
+  moves then this will (on average) decrease the distance to the next
+  apple.  This would require running an A* from the apple to each
+  other free (or likely to be free) square in the metric for getting
+  to the apple, doable but slow.
