@@ -58,9 +58,12 @@ void Snek::updateDisplay() const{
 	static std::vector<Point> old_body;
 	if(old_body.size())
 	  cio[old_body.rbegin()->first][old_body.rbegin()->second] = ' ';
-	if (alive) cio[body.begin()->first][body.begin()->second] = '#';
-	else cio[body.begin()->first][body.begin()->second] = '!';
+	if(body.size()>1)
+	cio[body[1].first][body[1].second] = '#';  // In case we haven't moved and need to not delete that.
 	cio[body.rbegin()->first][body.rbegin()->second] = '#';  // In case we haven't moved and need to not delete that.
+	if (alive) cio[body.begin()->first][body.begin()->second] = '<';
+	else cio[body.begin()->first][body.begin()->second] = '!';
+
 	cio[food.first][food.second] = 'a'; // Draw food over body in case of glitch
 	old_body = body;
 	cio << std::flush;

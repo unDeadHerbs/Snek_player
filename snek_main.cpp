@@ -2,6 +2,9 @@
 #include <optional>
 #include <queue>
 #include <fstream>
+#include <cmath>
+#include <map>
+#include <algorithm>
 
 #define DEBUG1 0
 #if DEBUG1
@@ -9,6 +12,30 @@ std::ofstream log;
 #define DBG(X) do{log<<X<<std::flush;}while(0)
 #else
 #define DBG(X) do{}while(0)
+#endif
+
+#define DEBUG2 1
+#if DEBUG2
+#include "Console-IO/ioconsole.hpp"
+std::queue<Point> dots;
+#define DBG2(X) do{					\
+    if(udh::cio[(X).first][(X).second]==' '){		\
+      dots.push(X);					\
+      udh::cio[(X).first][(X).second]='.';		\
+      udh::cio<<std::flush;				\
+    }							\
+  }while(0)
+#define CLEAR() do{					\
+    while(dots.size()){					\
+      auto d=dots.front();				\
+      dots.pop();					\
+      udh::cio[d.first][d.second]=' ';	\
+      udh::cio<<std::flush;				\
+    }							\
+  }while(0)
+#else
+#define DBG2(X) do{}while(0)
+#define CLEAR() do{}while(0)
 #endif
 
 using Direction = Snek::Direction;
@@ -23,20 +50,30 @@ int metric_distance(Snek const & s){
 }
 
 typedef std::queue<Direction> Path;
+typedef std::pair<Path,Snek> Consideration;
+
+std::map<Point,int> contention;
+int consideration_metric(Consideration const & val){
+  return metric_distance(val.second)+val.first.size()*contention[val.second.Body()[0]];
+  return metric_distance(val.second)+val.first.size()+contention[val.second.Body()[0]];
+  //return pow(metric_distance(val.second),1)*2+pow(val.first.size()/8,2);
+}
+
 Path Astar(Snek s){
+  contention.clear();
   DBG("- In Astar\n");
-  typedef std::pair<Path,Snek> Consideration;
   auto comp=[](Consideration const & lhs,Consideration const & rhs){
-	      return (metric_distance(lhs.second)+lhs.first.size())
-		    >(metric_distance(rhs.second)+rhs.first.size());
+	      return consideration_metric(lhs)>consideration_metric(rhs);
 	    };
-  std::priority_queue<Consideration,std::vector<Consideration>,decltype(comp)> possibilities(comp);
-  possibilities.push({{},s});
+  //std::priority_queue<Consideration,std::vector<Consideration>,decltype(comp)> possibilities(comp);
+  std::vector<Consideration> possibilities;
+  possibilities.push_back({{},s});
   // check if would kill
   for(;;){
     DBG("-- have "<<possibilities.size()<<" options\n");
-    auto current=possibilities.top();
-    possibilities.pop();
+    std::sort(possibilities.begin(),possibilities.end(),comp);
+    auto current=possibilities.back();
+    possibilities.pop_back();
     DBG("-- Top has "<<current.first.size()<<" steps\n");
     DBG("-- Top has "<<metric_distance(current.second)<<" to go\n");
     for(auto dir:{Direction::up,Direction::right,Direction::down,Direction::left}){
@@ -46,9 +83,13 @@ Path Astar(Snek s){
 	auto p=current.first;
 	p.push(dir);
 	if(ss.Body()[0]==s.Food()){
+	  CLEAR();
 	  return p;
+	}else{
+	  contention[ss.Body()[0]]++;
+	  DBG2(ss.Body()[0]);
 	}
-	possibilities.push({p,ss});
+	possibilities.push_back({p,ss});
       }
     }
   }
