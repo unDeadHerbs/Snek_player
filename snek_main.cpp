@@ -41,22 +41,77 @@ std::queue<Point> dots;
 using Direction = Snek::Direction;
 
 bool tail_reachable(Snek const& s){
+  // If the tail is reachable from the current head.
   return true; // TODO
 }
 
-int metric_distance(Snek const & s){
-  if(!tail_reachable(s))return 10000; // a big number
-  return distance(s.Body()[0],s.Food());// distance to food
+int metric_distance(Snek const & s,int dims=1){
+  return distance(s.Body()[0],s.Food(),dims);
 }
 
 typedef std::queue<Direction> Path;
 typedef std::pair<Path,Snek> Consideration;
 
+int count_turns(std::queue<Direction> v){
+  auto c=0;
+  Direction ld=v.front();
+  while(v.size()){
+    auto d=v.front();
+    v.pop();
+    if(ld!=d){
+      ld=d;
+      c++;
+    }
+  }
+  return c;
+}
+
 std::map<Point,int> contention;
 int consideration_metric(Consideration const & val){
+  auto md=metric_distance(val.second);
+  auto md2=metric_distance(val.second,2);
+  auto turns=count_turns(val.first);
+
+  auto heuristic_distance = md2*(1+(md>5)*4);
+  auto current_distance = val.first.size();
+  auto quick_explore = val.first.size()<3;
+  auto to_many_turns = (1+turns>1+(turns>3)*turns*(1+(turns>5)*turns)*(1+(turns>7)*turns));
+  auto is_close = (md<3) && (contention[val.second.Body()[0]]<3);
+  auto contentiousness = pow(contention[val.second.Body()[0]],2);
+
+  auto distance_cost=heuristic_distance+current_distance;
+  auto dislikability=to_many_turns+(1+!quick_explore)+contentiousness+(1+!is_close);
+
+  return distance_cost*dislikability;
+  
+  return (md2*(1+(md>5)*4)*(val.first.size()>2))+(1+turns>1+(turns>3)*turns*(1+(turns>5)*turns)*(1+(turns>7)*turns))*pow(contention[val.second.Body()[0]],2)*(md>5)+val.first.size()*((md>2) && (contention[val.second.Body()[0]]<3));
+  return (md2*(1+(md>5)*4)*(val.first.size()>2))+(1+turns>1+(turns>3)*turns*(1+(turns>5)*turns)*(1+(turns>7)*turns))*pow(contention[val.second.Body()[0]],2)*(md>5)+val.first.size()*((md>2) && (contention[val.second.Body()[0]]<3));
+  return (md2*(1+(md>5)*4)*(val.first.size()>2))+(1+turns>1+(turns>3)*turns*(1+(turns>5)*turns))*pow(contention[val.second.Body()[0]],2)*(md>5)+val.first.size()*((md>2) && (contention[val.second.Body()[0]]<3));
+  return (md2*(1+(md>5)*4)*(val.first.size()>2))+(1+turns>1+turns>3*turns*(1+turns>5*turns))*pow(contention[val.second.Body()[0]],2)*(md>5)+val.first.size()*(md>2 && contention[val.second.Body()[0]]<3);
+  return (md2*(1+(md>5)*4)*(val.first.size()>2))+(1+turns>1+turns>3*turns)*pow(contention[val.second.Body()[0]],2)*(md>5)+val.first.size()*(md>2 && contention[val.second.Body()[0]]<3);
+  return (md2*(1+(md>5)*4)*(val.first.size()>2))+(1+turns>3*4)*pow(contention[val.second.Body()[0]],2)*(md>5)+val.first.size()*(md>2 && contention[val.second.Body()[0]]<3);
+  return (md2*(1+(md>5)*4)*(val.first.size()>2))+count_turns(val.first)*pow(contention[val.second.Body()[0]],2)*(md>5)+val.first.size()*(md>2 && contention[val.second.Body()[0]]<3);
+  return (md2*(1+(md>5)*4)*(val.first.size()>2))+count_turns(val.first)*contention[val.second.Body()[0]]*(md>5)+val.first.size()*(md>2 && contention[val.second.Body()[0]]<3 );
+  return (md2*(1+(md2>5)*4)*(val.first.size()>2))+count_turns(val.first)*contention[val.second.Body()[0]]*(md2>5)+val.first.size()*(md2>2 && contention[val.second.Body()[0]]<3 );
+  return (md2*(1+(md2>5)*4)*(val.first.size()>2))+count_turns(val.first)*contention[val.second.Body()[0]]*(md2>5)+val.first.size();
+  return (md2*(1+(md2>5)*4)*(val.first.size()>2))+count_turns(val.first)*val.first.size()*contention[val.second.Body()[0]]*(md2>5)+val.first.size();
+  return (md2*(1+(md2>5)*4)*(val.first.size()>2))+count_turns(val.first)*val.first.size()*contention[val.second.Body()[0]];
+  return (md*(1+(md>5)*4))+count_turns(val.first)*val.first.size()*contention[val.second.Body()[0]];
+  return (md+(md>5)*4)+count_turns(val.first)*val.first.size()*contention[val.second.Body()[0]];
+  return (metric_distance(val.second)+3)+count_turns(val.first)*val.first.size()*contention[val.second.Body()[0]];
+  return std::max<int>(metric_distance(val.second),
+		       std::max(count_turns(val.first)-3,1
+				)*val.first.size())
+    *contention[val.second.Body()[0]];
+  return std::max<int>(metric_distance(val.second),count_turns(val.first)*val.first.size())*contention[val.second.Body()[0]];
+  return std::min<int>(metric_distance(val.second)*2,count_turns(val.first)*val.first.size()*contention[val.second.Body()[0]]);
+  return metric_distance(val.second)*2+count_turns(val.first)*val.first.size()*contention[val.second.Body()[0]];
+  return metric_distance(val.second)+count_turns(val.first)*val.first.size()*contention[val.second.Body()[0]];
+  return metric_distance(val.second)+count_turns(val.first)*val.first.size();
+  return metric_distance(val.second)+count_turns(val.first)*contention[val.second.Body()[0]];
   return metric_distance(val.second)+val.first.size()*contention[val.second.Body()[0]];
   return metric_distance(val.second)+val.first.size()+contention[val.second.Body()[0]];
-  //return pow(metric_distance(val.second),1)*2+pow(val.first.size()/8,2);
+  return pow(metric_distance(val.second),1)*2+pow(val.first.size()/8,2);
 }
 
 Path Astar(Snek s){
@@ -84,7 +139,8 @@ Path Astar(Snek s){
 	p.push(dir);
 	if(ss.Body()[0]==s.Food()){
 	  CLEAR();
-	  return p;
+	  if(tail_reachable(s))
+	    return p;
 	}else{
 	  contention[ss.Body()[0]]++;
 	  DBG2(ss.Body()[0]);

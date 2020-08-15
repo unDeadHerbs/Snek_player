@@ -5,8 +5,7 @@
 #include <vector>
 
 typedef std::pair<uint,uint> Point;
-int distance(Point,Point);
-
+int distance(Point,Point,int);
 class Snek {
   Point size;
 	std::vector<Point> body;  // [0] is head

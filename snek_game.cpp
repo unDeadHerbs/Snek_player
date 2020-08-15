@@ -10,8 +10,11 @@
 
 // Point functions
 
-int distance(Point L, Point R){
-  return abs(int(L.first-R.first))+abs(int(L.second-R.second));
+int distance(Point L, Point R,int metric){
+  return std::max<int>(std::pow(std::pow(abs(int(L.first-R.first)),metric)
+				+std::pow(abs(int(L.second-R.second)),metric)
+				,1./metric)
+		       ,1);
 }
 
 // Snek Functions
