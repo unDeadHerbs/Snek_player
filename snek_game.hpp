@@ -1,29 +1,35 @@
 #ifndef __SNEK_CLASS_HPP__
 #define __SNEK_CLASS_HPP__
-
 #include <string>
 #include <utility>
 #include <vector>
 
+typedef std::pair<uint,uint> Point;
+int distance(Point,Point);
+
 class Snek {
-	std::pair<uint, uint> size;
-	std::vector<std::pair<uint, uint>> body;  // [0] is head
-	std::pair<uint, uint> food;
+  Point size;
+	std::vector<Point> body;  // [0] is head
+	Point food;
+public:
+  auto Body()const{return body;}
+  auto Food()const{return food;}
 
  public:
-	typedef enum { none, up, right, down, left } Direction;
+  typedef enum { none, up, right, down, left } Direction;
   useconds_t sleep_time=100000;
 
  private:
 	Direction direction;
 	bool alive;
 
-	void drawWalls();
-	void updateDisplay();
+public: // Not sure about this
+	void drawWalls()const;
+	void updateDisplay()const;
 
  public:
 	Snek();
-	bool Alive() { return alive; }
+	bool Alive() const{ return alive; }
 	bool move(Direction movement = none);
 };
 

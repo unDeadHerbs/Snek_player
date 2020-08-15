@@ -2,8 +2,17 @@
 
 #include <unistd.h>
 #include <algorithm>
+#include <cmath>
 
 #include "Console-IO/ioconsole.hpp"
+
+// Point functions
+
+int distance(Point L, Point R){
+  return abs(int(L.first-R.first))+abs(int(L.second-R.second));
+}
+
+// Snek Functions
 
 using udh::cio;
 
@@ -18,12 +27,9 @@ Snek::Snek() {
 
 	direction = none;
 	alive = true;
-
-	drawWalls();
-	updateDisplay();
 }
 
-void Snek::drawWalls() {
+void Snek::drawWalls() const{
 	cio[0][0] = '+';
 	cio[size.first + 1][0] = '+';
 	cio[0][size.second + 1] = '+';
@@ -38,14 +44,14 @@ void Snek::drawWalls() {
 	}
 }
 
-void Snek::updateDisplay() {
-	static std::vector<std::pair<uint, uint>> old_body;
-	for (auto& p : old_body)
-		cio[p.first][p.second] = ' ';  // should need to rm 1 or 0
-	for (auto& p : body)
-		cio[p.first][p.second] = '#';  // should only need to add one
-	if (!alive) cio[body[0].first][body[0].second] = '!';
-	cio[food.first][food.second] = 'a';
+void Snek::updateDisplay() const{
+	static std::vector<Point> old_body;
+	if(old_body.size())
+	  cio[old_body.rbegin()->first][old_body.rbegin()->second] = ' ';
+	if (alive) cio[body.begin()->first][body.begin()->second] = '#';
+	else cio[body.begin()->first][body.begin()->second] = '!';
+	cio[body.rbegin()->first][body.rbegin()->second] = '#';  // In case we haven't moved and need to not delete that.
+	cio[food.first][food.second] = 'a'; // Draw food over body in case of glitch
 	old_body = body;
 	cio << std::flush;
 	usleep(sleep_time);
@@ -76,12 +82,13 @@ bool Snek::move(Direction movement_input) {
 	    food.second+=food.first==size.first;
 	    food.first%=size.first;
 	    food.second%=size.second;
+	    if(food.first==0)food.first++;
+	    if(food.second==0)food.second++;
 	  }
 	else
 	  body.pop_back(); // Get longer by one.
 	if (body[0].first == 0 || body[0].first == size.first + 1 ||
 	    body[0].second == 0 || body[0].second == size.second + 1)
 		alive = false;
-	updateDisplay();
 	return true;
 }
