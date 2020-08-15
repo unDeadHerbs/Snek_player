@@ -6,7 +6,6 @@
 std::ofstream log;
 #define DBG(X) do{log<<X<<std::flush;}while(0)
 
-
 using Direction = Snek::Direction;
 
 bool tail_reachable(Snek const& s){
@@ -29,23 +28,19 @@ Path Astar(Snek s){
   std::priority_queue<Consideration,std::vector<Consideration>,decltype(comp)> possibilities(comp);
   possibilities.push({{},s});
   // check if would kill
-  DBG("- Made empty Tries\n");
   for(;;){
     DBG("-- have "<<possibilities.size()<<" options\n");
     auto current=possibilities.top();
+    possibilities.pop();
     DBG("-- Top has "<<current.first.size()<<" steps\n");
     DBG("-- Top has "<<metric_distance(current.second)<<" to go\n");
     for(auto dir:{Direction::up,Direction::right,Direction::down,Direction::left}){
-      //DBG("--- Trying option "<<dir<<"\n");
       Snek ss(current.second);
       ss.move(dir);
       if(ss.Alive()){
-	//DBG("---- Adding Option\n");
 	auto p=current.first;
 	p.push(dir);
-	DBG("---- Adding Path Length "<<p.size()<<"\n");
 	if(ss.Body()[0]==s.Food()){
-	  DBG("---- Found\n");
 	  return p;
 	}
 	possibilities.push({p,ss});

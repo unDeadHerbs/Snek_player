@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 
 #include "Console-IO/ioconsole.hpp"
 
@@ -14,6 +15,13 @@ int distance(Point L, Point R){
 
 // Snek Functions
 
+Point rand_point(Point min,Point max){
+  return {
+	  std::rand()%(max.first-min.first+1)+min.first,
+	  std::rand()%(max.second-min.second+1)+min.second,
+  };
+}
+
 using udh::cio;
 
 Snek::Snek() {
@@ -23,7 +31,7 @@ Snek::Snek() {
 	body.push_back({size.first / 2, size.second / 2}); // Start in the center.
 
 	food = body[0];
-	food.second /= 2;  // TODO: random
+	food=rand_point({1,1},{size.first-1,size.second-1});
 
 	direction = none;
 	alive = true;
@@ -78,17 +86,20 @@ bool Snek::move(Direction movement_input) {
 	}
 	if (body[0] == food)
 	  while(std::find(body.begin(),body.end(),food)!=body.end()){ // Generate a new food.
-	    food.first++; // TODO: random, this is just lexicographic
+	    food=rand_point({1,1},{size.first-1,size.second-1});
+	    /*food.first++; // TODO: random, this is just lexicographic
 	    food.second+=food.first==size.first;
 	    food.first%=size.first;
 	    food.second%=size.second;
 	    if(food.first==0)food.first++;
-	    if(food.second==0)food.second++;
+	    if(food.second==0)food.second++;*/
 	  }
 	else
 	  body.pop_back(); // Get longer by one.
 	if (body[0].first == 0 || body[0].first == size.first + 1 ||
 	    body[0].second == 0 || body[0].second == size.second + 1)
 		alive = false;
+	if(std::find(body.begin()+1,body.end(),body[0])!=body.end())  // If the new head is in the body, die.
+	  alive =false;
 	return true;
 }
