@@ -3,8 +3,13 @@
 #include <queue>
 #include <fstream>
 
+#define DEBUG1 0
+#if DEBUG1
 std::ofstream log;
 #define DBG(X) do{log<<X<<std::flush;}while(0)
+#else
+#define DBG(X) do{}while(0)
+#endif
 
 using Direction = Snek::Direction;
 
@@ -22,8 +27,8 @@ Path Astar(Snek s){
   DBG("- In Astar\n");
   typedef std::pair<Path,Snek> Consideration;
   auto comp=[](Consideration const & lhs,Consideration const & rhs){
-	      return (metric_distance(lhs.second)*2+lhs.first.size())
-		    >(metric_distance(rhs.second)*2+rhs.first.size());
+	      return (metric_distance(lhs.second)+lhs.first.size())
+		    >(metric_distance(rhs.second)+rhs.first.size());
 	    };
   std::priority_queue<Consideration,std::vector<Consideration>,decltype(comp)> possibilities(comp);
   possibilities.push({{},s});
@@ -54,7 +59,9 @@ Path Astar(Snek s){
 }
 
 int main() {
+  #if DEBUG
   log = std::ofstream("trying.log",std::ios::out|std::ios::trunc);
+  #endif
   DBG("Starting\n");
   	Snek s;
 	s.drawWalls();

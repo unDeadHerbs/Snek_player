@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <ctime>
 
 #include "Console-IO/ioconsole.hpp"
 
@@ -25,6 +26,7 @@ Point rand_point(Point min,Point max){
 using udh::cio;
 
 Snek::Snek() {
+  std::srand(std::time(nullptr));
 	size = cio.size();
 	size.first -= 2;
 	size.second -= 2;

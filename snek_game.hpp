@@ -17,7 +17,7 @@ public:
 
  public:
   typedef enum { none, up, right, down, left } Direction;
-  useconds_t sleep_time=50000;
+  useconds_t sleep_time=10000;
 
  private:
 	Direction direction;
