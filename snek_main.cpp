@@ -209,6 +209,10 @@ int consideration_metric(Consideration const & val,Point food){
 
   // Let's try switching back and then make a =priority_stack= if this
   // is still a problem.
+
+  // That's much faster and seems to not re-evaluate too much, a more
+  // bespoke structure would probably still be better, but that's not
+  // a good spending of time at the moment.
   auto md=metric_distance(val.second,food);
   auto md2=metric_distance(val.second,food,2);
   auto ad=a_star_distance(val.second.Body(),val.second.Body()[0],food);
@@ -239,14 +243,12 @@ Path Astar(Snek s) {
   auto comp = [=](Consideration const &lhs, Consideration const &rhs) {
 		return consideration_metric(lhs,food) > consideration_metric(rhs,food);
   };
-  // std::priority_queue<Consideration,std::vector<Consideration>,decltype(comp)>
-  std::vector<Consideration> possibilities;
-  possibilities.push_back({{}, s});
+  std::priority_queue<Consideration,std::vector<Consideration>,decltype(comp)> possibilities(comp);
+  possibilities.push({{}, s});
   for (;;) {
     DBG("-- have " << possibilities.size() << " options\n");
-    std::sort(possibilities.begin(), possibilities.end(), comp);
-    auto current = possibilities.back();
-    possibilities.pop_back();
+    auto current = possibilities.top();
+    possibilities.pop();
     DBG("-- Top has " << current.first.size() << " steps\n");
     DBG("-- Top has " << metric_distance(current.second) << " to go\n");
     for (auto dir :
@@ -264,7 +266,7 @@ Path Astar(Snek s) {
 	DBG("--- consideration\n");
 	contention[ss.Body()[0]]++;
 	DBG2(ss.Body()[0]);
-	possibilities.push_back({p, ss});
+	possibilities.push({p, ss});
       }else
 	DBG("--- non-consider\n");
     }
