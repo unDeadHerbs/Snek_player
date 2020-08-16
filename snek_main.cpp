@@ -147,7 +147,7 @@ std::optional<int> a_star_distance_something_wrong(Snek const &s,Point from, Poi
   return {};
 }
 
-// TODO: either add a flood fill to check for possibility or have a
+// TODO: Either add a flood fill to check for possibility or have a
 // max seek depth (usually easy to provide from above).
 std::optional<int> a_star_distance(std::vector<Point>const walls,Point from, Point to) {
   CLEAR3();
@@ -167,7 +167,7 @@ std::optional<int> a_star_distance(std::vector<Point>const walls,Point from, Poi
 	return tri.second;
       if(std::find(walls.begin(),walls.end(),tri.first+dir)!=walls.end())
 	continue;
-      // todo check if in bounds
+      // TODO: check if in bounds
       tries.push_back({tri.first+dir,tri.second+1});
     }
   }
@@ -197,7 +197,18 @@ int count_turns(std::queue<Direction> v) {
 
 std::map<Point,int> contention;
 int consideration_metric(Consideration const & val,Point food){
-  // TODO: This has become very expensive and should be memoized.
+  // TODO: This has become very expensive and should be memoized
+
+  // A memoizer is a band-aid, the queue shouldn't be re-evaluating
+  // known points that much.
+
+  // If =contention= isn't needed any more then the values are fully
+  // memoize-able and perhaps =std::priority_queue= will work again?
+
+  // That depends on the implementation of =std::priority_queue=.
+
+  // Let's try switching back and then make a =priority_stack= if this
+  // is still a problem.
   auto md=metric_distance(val.second,food);
   auto md2=metric_distance(val.second,food,2);
   auto ad=a_star_distance(val.second.Body(),val.second.Body()[0],food);
@@ -243,10 +254,9 @@ Path Astar(Snek s) {
       Snek ss(current.second);
       ss.move(dir);
       if (ss.Alive()){
-	a_star_distance(ss.Body(),food,ss.Body().back());
 	auto p = current.first;
         p.push(dir);
-        if (ss.Body()[0] == food) { 
+        if (ss.Body()[0] == food and a_star_distance(ss.Body(),food,ss.Body().back())) {
 	 DBG("--- found\n");
        	  CLEAR();
 	  return p;
