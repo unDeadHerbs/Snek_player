@@ -83,35 +83,6 @@ int consideration_metric(Consideration const & val){
   auto dislikability=to_many_turns+(1+!quick_explore)+contentiousness+(1+!is_close);
 
   return distance_cost*dislikability;
-  
-  return (md2*(1+(md>5)*4)*(val.first.size()>2))+(1+turns>1+(turns>3)*turns*(1+(turns>5)*turns)*(1+(turns>7)*turns))*pow(contention[val.second.Body()[0]],2)*(md>5)+val.first.size()*((md>2) && (contention[val.second.Body()[0]]<3));
-  return (md2*(1+(md>5)*4)*(val.first.size()>2))+(1+turns>1+(turns>3)*turns*(1+(turns>5)*turns)*(1+(turns>7)*turns))*pow(contention[val.second.Body()[0]],2)*(md>5)+val.first.size()*((md>2) && (contention[val.second.Body()[0]]<3));
-  return (md2*(1+(md>5)*4)*(val.first.size()>2))+(1+turns>1+(turns>3)*turns*(1+(turns>5)*turns))*pow(contention[val.second.Body()[0]],2)*(md>5)+val.first.size()*((md>2) && (contention[val.second.Body()[0]]<3));
-  return (md2*(1+(md>5)*4)*(val.first.size()>2))+(1+turns>1+turns>3*turns*(1+turns>5*turns))*pow(contention[val.second.Body()[0]],2)*(md>5)+val.first.size()*(md>2 && contention[val.second.Body()[0]]<3);
-  return (md2*(1+(md>5)*4)*(val.first.size()>2))+(1+turns>1+turns>3*turns)*pow(contention[val.second.Body()[0]],2)*(md>5)+val.first.size()*(md>2 && contention[val.second.Body()[0]]<3);
-  return (md2*(1+(md>5)*4)*(val.first.size()>2))+(1+turns>3*4)*pow(contention[val.second.Body()[0]],2)*(md>5)+val.first.size()*(md>2 && contention[val.second.Body()[0]]<3);
-  return (md2*(1+(md>5)*4)*(val.first.size()>2))+count_turns(val.first)*pow(contention[val.second.Body()[0]],2)*(md>5)+val.first.size()*(md>2 && contention[val.second.Body()[0]]<3);
-  return (md2*(1+(md>5)*4)*(val.first.size()>2))+count_turns(val.first)*contention[val.second.Body()[0]]*(md>5)+val.first.size()*(md>2 && contention[val.second.Body()[0]]<3 );
-  return (md2*(1+(md2>5)*4)*(val.first.size()>2))+count_turns(val.first)*contention[val.second.Body()[0]]*(md2>5)+val.first.size()*(md2>2 && contention[val.second.Body()[0]]<3 );
-  return (md2*(1+(md2>5)*4)*(val.first.size()>2))+count_turns(val.first)*contention[val.second.Body()[0]]*(md2>5)+val.first.size();
-  return (md2*(1+(md2>5)*4)*(val.first.size()>2))+count_turns(val.first)*val.first.size()*contention[val.second.Body()[0]]*(md2>5)+val.first.size();
-  return (md2*(1+(md2>5)*4)*(val.first.size()>2))+count_turns(val.first)*val.first.size()*contention[val.second.Body()[0]];
-  return (md*(1+(md>5)*4))+count_turns(val.first)*val.first.size()*contention[val.second.Body()[0]];
-  return (md+(md>5)*4)+count_turns(val.first)*val.first.size()*contention[val.second.Body()[0]];
-  return (metric_distance(val.second)+3)+count_turns(val.first)*val.first.size()*contention[val.second.Body()[0]];
-  return std::max<int>(metric_distance(val.second),
-		       std::max(count_turns(val.first)-3,1
-				)*val.first.size())
-    *contention[val.second.Body()[0]];
-  return std::max<int>(metric_distance(val.second),count_turns(val.first)*val.first.size())*contention[val.second.Body()[0]];
-  return std::min<int>(metric_distance(val.second)*2,count_turns(val.first)*val.first.size()*contention[val.second.Body()[0]]);
-  return metric_distance(val.second)*2+count_turns(val.first)*val.first.size()*contention[val.second.Body()[0]];
-  return metric_distance(val.second)+count_turns(val.first)*val.first.size()*contention[val.second.Body()[0]];
-  return metric_distance(val.second)+count_turns(val.first)*val.first.size();
-  return metric_distance(val.second)+count_turns(val.first)*contention[val.second.Body()[0]];
-  return metric_distance(val.second)+val.first.size()*contention[val.second.Body()[0]];
-  return metric_distance(val.second)+val.first.size()+contention[val.second.Body()[0]];
-  return pow(metric_distance(val.second),1)*2+pow(val.first.size()/8,2);
 }
 
 Path Astar(Snek s){
