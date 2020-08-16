@@ -74,7 +74,7 @@ int consideration_metric(Consideration const & val){
 
   auto heuristic_distance = md2*(1+(md>5)*4);
   auto current_distance = val.first.size();
-  auto quick_explore = val.first.size()<3;
+  auto quick_explore = val.first.size()<5;
   auto to_many_turns = (1+turns>1+(turns>3)*turns*(1+(turns>5)*turns)*(1+(turns>7)*turns));
   auto is_close = (md<3) && (contention[val.second.Body()[0]]<3);
   auto contentiousness = pow(contention[val.second.Body()[0]],2);
