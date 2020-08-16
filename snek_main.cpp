@@ -64,13 +64,13 @@ std::queue<Point> dots3;
   } while (0)
 #define CLEAR3()                                                                \
   do {                                                                         \
+    sleep(1);								\
     while (dots3.size()) {                                                      \
       auto d = dots3.front();                                                   \
       dots3.pop();                                                              \
       udh::cio[d.first][d.second] = ' ';                                       \
       udh::cio << std::flush;                                                  \
     }                                                                          \
-    sleep(2); \
   } while (0)
 #else
 #define DBG3(X)                                                                \
