@@ -54,13 +54,13 @@ std::queue<Point> dots;
 #include "Console-IO/ioconsole.hpp"
 #include <unistd.h>
 std::queue<Point> dots3;
-#define DBG3(X)                                                                \
-  do {                                                                         \
-    if (udh::cio[(X).first][(X).second] == ' ') {                              \
-      dots3.push(X);                                                            \
-      udh::cio[(X).first][(X).second] = '.';                                   \
-      udh::cio << std::flush;                                                  \
-    }                                                                          \
+#define DBG3(X)								\
+  do {									\
+    if (udh::cio[(X).first][(X).second] == ' ') {			\
+      dots3.push(X);							\
+      udh::cio[(X).first][(X).second] = '_';				\
+      udh::cio << std::flush;						\
+    }									\
   } while (0)
 #define CLEAR3()                                                                \
   do {                                                                         \
