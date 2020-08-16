@@ -49,6 +49,36 @@ std::queue<Point> dots;
   } while (0)
 #endif
 
+#define DEBUG3 0
+#if DEBUG3
+#include "Console-IO/ioconsole.hpp"
+std::queue<Point> dots3;
+#define DBG3(X)                                                                \
+  do {                                                                         \
+    if (udh::cio[(X).first][(X).second] == ' ') {                              \
+      dots3.push(X);                                                            \
+      udh::cio[(X).first][(X).second] = '.';                                   \
+      udh::cio << std::flush;                                                  \
+    }                                                                          \
+  } while (0)
+#define CLEAR3()                                                                \
+  do {                                                                         \
+    while (dots3.size()) {                                                      \
+      auto d = dots3.front();                                                   \
+      dots3.pop();                                                              \
+      udh::cio[d.first][d.second] = ' ';                                       \
+      udh::cio << std::flush;                                                  \
+    }                                                                          \
+  } while (0)
+#else
+#define DBG3(X)                                                                \
+  do {                                                                         \
+  } while (0)
+#define CLEAR3()                                                                \
+  do {                                                                         \
+  } while (0)
+#endif
+
 using Direction = Snek::Direction;
 
 bool tail_reachable(Snek const& s){
