@@ -58,6 +58,8 @@ std::queue<Point> dots3;
   do {									\
     if (udh::cio[(X).first][(X).second] == ' ') {			\
       dots3.push(X);							\
+      udh::cio[(X).first][(X).second] = '|';				\
+      udh::cio << std::flush;						\
       udh::cio[(X).first][(X).second] = '_';				\
       udh::cio << std::flush;						\
     }									\
@@ -149,15 +151,20 @@ std::optional<int> a_star_distance_something_wrong(Snek const &s,Point from, Poi
 
 // TODO: Either add a flood fill to check for possibility or have a
 // max seek depth (usually easy to provide from above).
-std::optional<int> a_star_distance(std::vector<Point>const walls,Point from, Point to) {
+std::optional<int> a_star_distance(std::vector<Point>const walls,Point from, Point to,int max_dist=0) {
+  // A Star doesn't utilize the fact that there are only two walls,
+  // one external and one the snake.  This can be used to remove a lot
+  // of search options.
   CLEAR3();
   if(from==to)return 0;
-  auto metric=[=](std::pair<Point,int> pnt){return distance(pnt.first,to,2)*2+pnt.second;};
+  auto metric=[=](std::pair<Point,int> pnt){return distance(pnt.first,to,1)*2+pnt.second*(pnt.second>3);};
   auto gt=[=](std::pair<Point,int> lhs,std::pair<Point,int> rhs){return metric(lhs)>metric(rhs);};
   std::vector<std::pair<Point,int>> tries{{from,0}};
+  std::vector<Point> tried;
   while(tries.size()){
     std::sort(tries.begin(),tries.end(),gt);
     auto tri=tries.back();
+    tried.push_back(tri.first);
     tries.pop_back();
     DBG3(tri.first);
     DBG("= a_star try={"<<tri.first.first<<","<<tri.first.second<<"}\n");
@@ -165,9 +172,13 @@ std::optional<int> a_star_distance(std::vector<Point>const walls,Point from, Poi
 	   {Direction::up, Direction::right, Direction::down, Direction::left}){
       if(tri.first+dir==to)
 	return tri.second;
+      if(max_dist!=0 and tri.second > max_dist)
+	return {}; // TODO: Perhaps give a few tries?
       if(std::find(walls.begin(),walls.end(),tri.first+dir)!=walls.end())
 	continue;
       // TODO: check if in bounds
+      if(std::find(tried.begin(),tried.end(),tri.first+dir)!=tried.end())
+	continue;
       tries.push_back({tri.first+dir,tri.second+1});
     }
   }
@@ -196,7 +207,7 @@ int count_turns(std::queue<Direction> v) {
 }
 
 std::map<Point,int> contention;
-int consideration_metric(Consideration const & val,Point food){
+int consideration_metric(Consideration const & val,Point food,int & seek_distance){
   // TODO: This has become very expensive and should be memoized
 
   // A memoizer is a band-aid, the queue shouldn't be re-evaluating
@@ -213,23 +224,29 @@ int consideration_metric(Consideration const & val,Point food){
   // That's much faster and seems to not re-evaluate too much, a more
   // bespoke structure would probably still be better, but that's not
   // a good spending of time at the moment.
-  auto md=metric_distance(val.second,food);
-  auto md2=metric_distance(val.second,food,2);
-  auto ad=a_star_distance(val.second.Body(),val.second.Body()[0],food);
-  if(ad){
+  int md=seek_distance*2;   // If past seek_distance then just be big
+			    // as to indicate to not search here.
+  auto ad=a_star_distance(val.second.Body(),val.second.Body()[0],food,seek_distance*2);
+  if(ad) {
     md=*ad;
-    md2=*ad;
+    seek_distance=md*4;
+    // Dynamically reduce the seek distance as we approach the goal.
+
+    // TODO: This needs undoing if the path is a failure on other metrics.
   }
+
   auto turns=count_turns(val.first);
 
-  auto heuristic_distance = md2*(1+(md>5)*4);
+  auto heuristic_distance = md*(1+(md>5)*4);
   auto current_distance = val.first.size();
+  //return md+current_distance;
   auto quick_explore = val.first.size()<5;
   auto to_many_turns = (1+turns>1+(turns>3)*turns*(1+(turns>5)*turns)*(1+(turns>7)*turns));
   auto is_close = (md<3) && (contention[val.second.Body()[0]]<3);
   auto contentiousness = pow(contention[val.second.Body()[0]],2);
 
   auto distance_cost=heuristic_distance+current_distance;
+  //return distance_cost;
   auto dislikability=to_many_turns+(1+!quick_explore)+contentiousness+(1+!is_close);
 
   return distance_cost*dislikability;
@@ -240,8 +257,11 @@ Path Astar(Snek s) {
   contention.clear();
   DBG("- In Astar\n");
   auto food=s.Food();
-  auto comp = [=](Consideration const &lhs, Consideration const &rhs) {
-		return consideration_metric(lhs,food) > consideration_metric(rhs,food);
+  int start_dist=*a_star_distance(s.Body(),s.Body().front(),food);
+  // That's guaranteed to be non-null by the last search.
+  // TODO: assert that.
+  auto comp = [=,&start_dist](Consideration const &lhs, Consideration const &rhs) {
+		return consideration_metric(lhs,food,start_dist) > consideration_metric(rhs,food,start_dist);
   };
   std::priority_queue<Consideration,std::vector<Consideration>,decltype(comp)> possibilities(comp);
   possibilities.push({{}, s});
@@ -286,13 +306,13 @@ int main() {
   auto p = Astar(s);
   DBG("Got a path of length " << p.size() << "\n");
   while (s.Alive()) {
-    // TODO: Astar can return {}.
     if (!p.size())
       p = Astar(s);
+    if(!p.size()) break;
     s.move(p.front());
     p.pop();
     s.updateDisplay();
   }
-
+  // TODO: Wait
   return 0;
 }
