@@ -52,6 +52,7 @@ std::queue<Point> dots;
 #define DEBUG3 0
 #if DEBUG3
 #include "Console-IO/ioconsole.hpp"
+#include <unistd.h>
 std::queue<Point> dots3;
 #define DBG3(X)                                                                \
   do {                                                                         \
@@ -69,6 +70,7 @@ std::queue<Point> dots3;
       udh::cio[d.first][d.second] = ' ';                                       \
       udh::cio << std::flush;                                                  \
     }                                                                          \
+    sleep(2); \
   } while (0)
 #else
 #define DBG3(X)                                                                \
