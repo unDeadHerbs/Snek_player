@@ -42,9 +42,8 @@ Snek::Snek() {
   size = cio.size();
   size.first -= 2;
   size.second -= 2;
-  body.push_back({size.first / 2, size.second / 2}); // Start in the center.
+  body.push_back({{size.first / 2, size.second / 2},'s'}); // Start in the center.
 
-  food = body[0];
   food = rand_point({1, 1}, {size.first - 1, size.second - 1});
 
   direction = none;
@@ -67,21 +66,22 @@ void Snek::drawWalls() const {
 }
 
 void Snek::updateDisplay() const {
-  static std::vector<Point> old_body;
-  if (old_body.size())
-    cio[old_body.rbegin()->first][old_body.rbegin()->second] = ' ';
-  if (body.size() > 1)
-    cio[body[1].first][body[1].second] =
-        '#'; // In case we haven't moved and need to not delete that.
-  cio[body.rbegin()->first][body.rbegin()->second] =
-      '#'; // In case we haven't moved and need to not delete that.
+  static Point old_end;
+  if (old_end!=Point{0,0})
+    cio[old_end.first][old_end.second] = ' ';
+  if (body.size() > 1){
+    cio[body[1].first.first][body[1].first.second] =
+        body[1].second; // In case we haven't moved and need to not delete that.
+    cio[body.back().first.first][body.back().first.second] =
+      body.back().second; // In case we haven't moved and need to not delete that.
+  }
   if (alive)
-    cio[body.begin()->first][body.begin()->second] = '<';
+    cio[body.front().first.first][body.front().first.second] = body.front().second;
   else
-    cio[body.begin()->first][body.begin()->second] = '!';
+    cio[body.front().first.first][body.front().first.second] = '!';
 
   cio[food.first][food.second] = 'a'; // Draw food over body in case of glitch
-  old_body = body;
+  old_end = body.back().first;
   cio << std::flush;
   usleep(sleep_time);
 }
@@ -94,21 +94,78 @@ bool Snek::move(Direction movement_input) {
   case none:
     return true;
   case up:
-    body.insert(body.begin(), {body[0].first - 1, body[0].second});
+    body.insert(body.begin(), {{body[0].first.first - 1, body[0].first.second},'^'});
+    if(body.size()>1)
+      switch(body[1].second){
+      case '^':
+	body[1].second='|';
+	break;
+      case '>':
+	body[1].second='/';
+	break;
+      case 'v':
+	break;
+      case '<':
+	body[1].second='\\';
+	break;
+      }
     break;
   case right:
-    body.insert(body.begin(), {body[0].first, body[0].second + 1});
+    body.insert(body.begin(), {{body[0].first.first, body[0].first.second + 1},'>'});
+    if(body.size()>1)
+      switch(body[1].second){
+      case '^':
+	body[1].second='/';
+	break;
+      case '>':
+	body[1].second='-';
+	break;
+      case 'v':
+	body[1].second='\\';
+	break;
+      case '<':
+	break;
+      }
     break;
   case down:
-    body.insert(body.begin(), {body[0].first + 1, body[0].second});
+    body.insert(body.begin(), {{body[0].first.first + 1, body[0].first.second},'v'});
+    if(body.size()>1)
+      switch(body[1].second){
+      case '^':
+	break;
+      case '>':
+	body[1].second='\\';
+	break;
+      case 'v':
+	body[1].second='|';
+	break;
+      case '<':
+	body[1].second='/';
+	break;
+      }
     break;
   case left:
-    body.insert(body.begin(), {body[0].first, body[0].second - 1});
+    body.insert(body.begin(), {{body[0].first.first, body[0].first.second - 1},'<'});
+    if(body.size()>1)
+      switch(body[1].second){
+      case '^':
+	body[1].second='\\';
+	break;
+      case '>':
+	break;
+      case 'v':
+	body[1].second='/';
+	break;
+      case '<':
+	body[1].second='-';
+	break;
+      }
     break;
   }
-  if (body[0] == food)
-    while (std::find(body.begin(), body.end(), food) !=
-           body.end()) { // Generate a new food.
+  if (body[0].first == food){
+    auto b=Body();
+    while (std::find(b.begin(), b.end(), food) !=
+           b.end()) { // Generate a new food.
       food = rand_point({1, 1}, {size.first - 1, size.second - 1});
       /*food.first++; // TODO: random, this is just lexicographic
       food.second+=food.first==size.first;
@@ -117,13 +174,15 @@ bool Snek::move(Direction movement_input) {
       if(food.first==0)food.first++;
       if(food.second==0)food.second++;*/
     }
+  }
   else
-    body.pop_back(); // Get longer by one.
-  if (body[0].first == 0 || body[0].first == size.first + 1 ||
-      body[0].second == 0 || body[0].second == size.second + 1)
+    body.pop_back(); // Don't get longer by one.
+  if (body[0].first.first == 0 || body[0].first.first == size.first + 1 ||
+      body[0].first.second == 0 || body[0].first.second == size.second + 1)
     alive = false;
-  if (std::find(body.begin() + 1, body.end(), body[0]) !=
-      body.end()) // If the new head is in the body, die.
+  auto b=Body();
+  if (std::find(b.begin() + 1, b.end(), b[0]) !=
+      b.end()) // If the new head is in the body, die.
     alive = false;
   return true;
 }
