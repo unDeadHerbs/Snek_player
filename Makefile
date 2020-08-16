@@ -1,7 +1,10 @@
 all: format simple.run snek.run
 
+#SAN = -g -fsanitize=address
+#SAN = -g -fsanitize=memory
+
 %.bin: %*.cpp
-	clang++ -std=c++1z -Wall -Wextra -Wparentheses -Wno-dangling-else -lncurses -ltinfo -g  -lncurses -ltinfo -o $@ $^ Console-IO/ioconsole.cpp
+	clang++ -std=c++1z -Wall -Wextra -Wparentheses -Wno-dangling-else -lncurses -ltinfo -g  -lncurses -ltinfo -o $@ $^ Console-IO/ioconsole.cpp $(SAN)
 
 .PHONY: %.run format
 %.run: %.bin
