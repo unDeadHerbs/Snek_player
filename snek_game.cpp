@@ -11,10 +11,18 @@
 // Point functions
 
 int distance(Point L, Point R, int metric) {
+  if(metric==1)
+    return abs(int(L.first) - int(R.first)) + abs(int(L.second) - int(R.second));
+  if(metric==2)
+    return std::max<int>(
+			 abs(int(std::sqrt(abs(int(L.first) - int(R.first))*abs(int(L.first) - int(R.first)) +
+					   abs(int(L.second) - int(R.second))*abs(int(L.second) - int(R.second))
+					 ))),
+			       1);
   return std::max<int>(
-      std::pow(std::pow(abs(int(L.first - R.first)), metric) +
-                   std::pow(abs(int(L.second - R.second)), metric),
-               1. / metric),
+		       abs(int(std::pow(std::pow(abs(int(L.first) - int(R.first)), metric) +
+					std::pow(abs(int(L.second) - int(R.second)), metric),
+					1. / metric))),
       1);
 }
 
