@@ -239,7 +239,7 @@ int consideration_metric(Consideration const & val,Point food,int & seek_distanc
 
   auto heuristic_distance = md*(1+(md>5)*4);
   auto current_distance = val.first.size();
-  //return md+current_distance;
+  return md+current_distance;
   auto quick_explore = val.first.size()<5;
   auto to_many_turns = (1+turns>1+(turns>3)*turns*(1+(turns>5)*turns)*(1+(turns>7)*turns));
   auto is_close = (md<3) && (contention[val.second.Body()[0]]<3);
@@ -252,23 +252,57 @@ int consideration_metric(Consideration const & val,Point food,int & seek_distanc
   return distance_cost*dislikability;
 }
 
+template<typename T,typename U,typename V>
+void drop_all_but_n(std::priority_queue<T,U,V>& q,int count){
+  // TODO: This is a patch instead of writing =priority_stack=.
+  if(q.size()>count){
+    U tmp;
+    while(tmp.size()<count){
+      tmp.push_back(q.top());
+      q.pop();
+    }
+    while(q.size())q.pop();
+    while(tmp.size()){
+      q.push(tmp.back());
+      tmp.pop_back();
+    }
+  }
+}
+
 Path Astar(Snek s) {
   // TODO: This function slows down dramatically as more currently active paths are added.
   contention.clear();
   DBG("- In Astar\n");
   auto food=s.Food();
-  int start_dist=*a_star_distance(s.Body(),s.Body().front(),food);
+  auto tail_dist=*a_star_distance(s.Body(),s.Body().front(),s.Body().back());
   // That's guaranteed to be non-null by the last search.
-  // TODO: assert that.
+  int food_linear=distance(s.Body()[0],food,1);
+  auto start_dist_check=a_star_distance(s.Body(),s.Body().front(),food,food_linear);
+  // If the food isn't within the linear distance then the body is in the way.
+  int start_dist;
+  if(start_dist_check)
+    start_dist=*start_dist_check;
+  else
+    start_dist=tail_dist;
   auto comp = [=,&start_dist](Consideration const &lhs, Consideration const &rhs) {
 		return consideration_metric(lhs,food,start_dist) > consideration_metric(rhs,food,start_dist);
   };
   std::priority_queue<Consideration,std::vector<Consideration>,decltype(comp)> possibilities(comp);
   possibilities.push({{}, s});
   for (;;) {
+    //drop_all_but_n(possibilities,5);
     DBG("-- have " << possibilities.size() << " options\n");
+  nxt:
     auto current = possibilities.top();
     possibilities.pop();
+    // Something with priority_queue gets slow with lots of elements,
+    // trim or take best guess rather than continue exploring if safe.
+    // TODO: This is a band-aid instead of writing =priority_stack=.
+    if(possibilities.size()>5 or current.first.size()>3)
+      if(a_star_distance(current.second.Body(),current.second.Body().front(),current.second.Body().back()))
+	return current.first;
+      else
+	goto nxt;
     DBG("-- Top has " << current.first.size() << " steps\n");
     DBG("-- Top has " << metric_distance(current.second) << " to go\n");
     for (auto dir :
