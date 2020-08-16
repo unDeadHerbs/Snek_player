@@ -83,6 +83,22 @@ std::queue<Point> dots3;
 
 using Direction = Snek::Direction;
 
+// TODO: Make point and dir into more established things.
+Point operator+(Point const pnt, Direction const dir){
+  switch(dir){
+  case Direction::none:
+    return pnt;
+  case Direction::up:
+    return {pnt.first,pnt.second-1};
+  case Direction::right:
+    return {pnt.first+1,pnt.second};
+  case Direction::down:
+    return {pnt.first,pnt.second+1};
+  case Direction::left:
+    return {pnt.first+1,pnt.second};
+  }
+}
+
 bool tail_reachable(Snek const& s){
   // If the tail is reachable from the current head.
   return true; // TODO
