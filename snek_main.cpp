@@ -86,21 +86,21 @@ bool tail_reachable(Snek const& s){
   return true; // TODO
 }
 
-int metric_distance(Snek const & s,int dims=1){
-  return distance(s.Body()[0],s.Food(),dims);
+int metric_distance(Snek const &s, int dims = 1) {
+  return distance(s.Body()[0], s.Food(), dims);
 }
 
 typedef std::queue<Direction> Path;
-typedef std::pair<Path,Snek> Consideration;
+typedef std::pair<Path, Snek> Consideration;
 
-int count_turns(std::queue<Direction> v){
-  auto c=0;
-  Direction ld=v.front();
-  while(v.size()){
-    auto d=v.front();
+int count_turns(std::queue<Direction> v) {
+  auto c = 0;
+  Direction ld = v.front();
+  while (v.size()) {
+    auto d = v.front();
     v.pop();
-    if(ld!=d){
-      ld=d;
+    if (ld != d) {
+      ld = d;
       c++;
     }
   }
@@ -126,24 +126,26 @@ int consideration_metric(Consideration const & val){
   return distance_cost*dislikability;
 }
 
-Path Astar(Snek s){
+Path Astar(Snek s) {
+  // TODO: This function slows down dramatically as more currently active paths are added.
   contention.clear();
   DBG("- In Astar\n");
-  auto comp=[](Consideration const & lhs,Consideration const & rhs){
-	      return consideration_metric(lhs)>consideration_metric(rhs);
-	    };
-  //std::priority_queue<Consideration,std::vector<Consideration>,decltype(comp)> possibilities(comp);
+  auto comp = [](Consideration const &lhs, Consideration const &rhs) {
+    return consideration_metric(lhs) > consideration_metric(rhs);
+  };
+  // std::priority_queue<Consideration,std::vector<Consideration>,decltype(comp)>
   std::vector<Consideration> possibilities;
-  possibilities.push_back({{},s});
+  possibilities.push_back({{}, s});
   // check if would kill
-  for(;;){
-    DBG("-- have "<<possibilities.size()<<" options\n");
-    std::sort(possibilities.begin(),possibilities.end(),comp);
-    auto current=possibilities.back();
+  for (;;) {
+    DBG("-- have " << possibilities.size() << " options\n");
+    std::sort(possibilities.begin(), possibilities.end(), comp);
+    auto current = possibilities.back();
     possibilities.pop_back();
-    DBG("-- Top has "<<current.first.size()<<" steps\n");
-    DBG("-- Top has "<<metric_distance(current.second)<<" to go\n");
-    for(auto dir:{Direction::up,Direction::right,Direction::down,Direction::left}){
+    DBG("-- Top has " << current.first.size() << " steps\n");
+    DBG("-- Top has " << metric_distance(current.second) << " to go\n");
+    for (auto dir :
+         {Direction::up, Direction::right, Direction::down, Direction::left}) {
       Snek ss(current.second);
       ss.move(dir);
       if(ss.Alive()){
@@ -161,30 +163,28 @@ Path Astar(Snek s){
       }
     }
   }
-    
-  //if(!ss.Alive())return {};
-  // return happiness?
-  // return 1;
+  return {};
 }
 
 int main() {
-  #if DEBUG
-  log = std::ofstream("trying.log",std::ios::out|std::ios::trunc);
-  #endif
+#if DEBUG1
+  log_file = std::ofstream("trying.log", std::ios::out | std::ios::trunc);
+#endif
   DBG("Starting\n");
-  	Snek s;
-	s.drawWalls();
-	s.updateDisplay();
-	DBG("Call to Astar\n");
-	auto p=Astar(s);
-	DBG("Got a path of length "<<p.size()<<"\n");
-	while (s.Alive()){
-	  if(!p.size())
-	    p=Astar(s);
-	  s.move(p.front());
-	  p.pop();
-	  s.updateDisplay();
-	}
+  Snek s;
+  s.drawWalls();
+  s.updateDisplay();
+  DBG("Call to Astar\n");
+  auto p = Astar(s);
+  DBG("Got a path of length " << p.size() << "\n");
+  while (s.Alive()) {
+    // TODO: Astar can return {}.
+    if (!p.size())
+      p = Astar(s);
+    s.move(p.front());
+    p.pop();
+    s.updateDisplay();
+  }
 
-	return 0;
+  return 0;
 }
