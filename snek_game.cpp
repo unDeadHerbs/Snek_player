@@ -8,6 +8,8 @@
 
 #include "Console-IO/ioconsole.hpp"
 
+#define BOX_CHAR 0
+
 // Point functions
 
 int distance(Point L, Point R, int metric) {
@@ -100,15 +102,15 @@ bool Snek::move(Direction movement_input) {
     if(body_graphics.size()>1)
       switch(body_graphics[1]){
       case '^':
-	body_graphics[1]='|';
+	body_graphics[1]=BOX_CHAR?0x2502:'|';
 	break;
       case '>':
-	body_graphics[1]='/';
+	body_graphics[1]=BOX_CHAR?0x2518:'/';
 	break;
       case 'v':
 	break;
       case '<':
-	body_graphics[1]='\\';
+	body_graphics[1]=BOX_CHAR?0x2514:'\\';
 	break;
       }
     break;
@@ -118,13 +120,13 @@ bool Snek::move(Direction movement_input) {
     if(body_graphics.size()>1)
       switch(body_graphics[1]){
       case '^':
-	body_graphics[1]='/';
+	body_graphics[1]=BOX_CHAR?0x250c:'/';
 	break;
       case '>':
-	body_graphics[1]='-';
+	body_graphics[1]=BOX_CHAR?0x2500:'-';
 	break;
       case 'v':
-	body_graphics[1]='\\';
+	body_graphics[1]=BOX_CHAR?0x2514:'\\';
 	break;
       case '<':
 	break;
@@ -138,13 +140,13 @@ bool Snek::move(Direction movement_input) {
       case '^':
 	break;
       case '>':
-	body_graphics[1]='\\';
+	body_graphics[1]=BOX_CHAR?0x2510:'\\';
 	break;
       case 'v':
-	body_graphics[1]='|';
+	body_graphics[1]=BOX_CHAR?0x2502:'|';
 	break;
       case '<':
-	body_graphics[1]='/';
+	body_graphics[1]=BOX_CHAR?0x250c:'/';
 	break;
       }
     break;
@@ -154,15 +156,15 @@ bool Snek::move(Direction movement_input) {
     if(body_graphics.size()>1)
       switch(body_graphics[1]){
       case '^':
-	body_graphics[1]='\\';
+	body_graphics[1]=BOX_CHAR?0x2510:'\\';
 	break;
       case '>':
 	break;
       case 'v':
-	body_graphics[1]='/';
+	body_graphics[1]=BOX_CHAR?0x2518:'/';
 	break;
       case '<':
-	body_graphics[1]='-';
+	body_graphics[1]=BOX_CHAR?0x2500:'-';
 	break;
       }
     break;

@@ -9,7 +9,7 @@ int distance(Point, Point, int);
 class Snek {
   Point size;
   std::vector<Point> body; // [0] is head
-  std::vector<char> body_graphics; // [0] is head
+  std::vector<wchar_t> body_graphics; // [0] is head
   Point food;
 
 public:
