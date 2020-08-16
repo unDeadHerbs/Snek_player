@@ -5,36 +5,48 @@
 #include <optional>
 #include <queue>
 
-#define DEBUG1 0
+#define DEBUG1 1
 #if DEBUG1
-std::ofstream log;
-#define DBG(X) do{log<<X<<std::flush;}while(0)
+#include <fstream>
+std::ofstream log_file;
+#define DBG(X)                                                                 \
+  do {                                                                         \
+    log_file << X << std::flush;                                                    \
+  } while (0)
 #else
-#define DBG(X) do{}while(0)
+#define DBG(X)                                                                 \
+  do {                                                                         \
+  } while (0)
 #endif
 
 #define DEBUG2 1
 #if DEBUG2
 #include "Console-IO/ioconsole.hpp"
 std::queue<Point> dots;
-#define DBG2(X) do{					\
-    if(udh::cio[(X).first][(X).second]==' '){		\
-      dots.push(X);					\
-      udh::cio[(X).first][(X).second]='.';		\
-      udh::cio<<std::flush;				\
-    }							\
-  }while(0)
-#define CLEAR() do{					\
-    while(dots.size()){					\
-      auto d=dots.front();				\
-      dots.pop();					\
-      udh::cio[d.first][d.second]=' ';	\
-      udh::cio<<std::flush;				\
-    }							\
-  }while(0)
+#define DBG2(X)                                                                \
+  do {                                                                         \
+    if (udh::cio[(X).first][(X).second] == ' ') {                              \
+      dots.push(X);                                                            \
+      udh::cio[(X).first][(X).second] = '.';                                   \
+      udh::cio << std::flush;                                                  \
+    }                                                                          \
+  } while (0)
+#define CLEAR()                                                                \
+  do {                                                                         \
+    while (dots.size()) {                                                      \
+      auto d = dots.front();                                                   \
+      dots.pop();                                                              \
+      udh::cio[d.first][d.second] = ' ';                                       \
+      udh::cio << std::flush;                                                  \
+    }                                                                          \
+  } while (0)
 #else
-#define DBG2(X) do{}while(0)
-#define CLEAR() do{}while(0)
+#define DBG2(X)                                                                \
+  do {                                                                         \
+  } while (0)
+#define CLEAR()                                                                \
+  do {                                                                         \
+  } while (0)
 #endif
 
 using Direction = Snek::Direction;
