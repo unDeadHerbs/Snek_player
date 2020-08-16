@@ -1,10 +1,9 @@
 #include "snek_game.hpp"
-#include <optional>
-#include <queue>
-#include <fstream>
+#include <algorithm>
 #include <cmath>
 #include <map>
-#include <algorithm>
+#include <optional>
+#include <queue>
 
 #define DEBUG1 0
 #if DEBUG1
