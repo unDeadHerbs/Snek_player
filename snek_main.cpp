@@ -89,13 +89,15 @@ Point operator+(Point const pnt, Direction const dir){
   case Direction::none:
     return pnt;
   case Direction::up:
+    if(pnt.second==0)return {pnt.first,pnt.second};
     return {pnt.first,pnt.second-1};
   case Direction::right:
     return {pnt.first+1,pnt.second};
   case Direction::down:
     return {pnt.first,pnt.second+1};
   case Direction::left:
-    return {pnt.first+1,pnt.second};
+    if(pnt.first==0)return {pnt.first,pnt.second};
+    return {pnt.first-1,pnt.second};
   }
 }
 
