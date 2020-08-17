@@ -40,6 +40,7 @@ Point rand_point(Point min, Point max) {
 using udh::cio;
 
 Snek::Snek() {
+  game_tick=0;
   std::srand(std::time(nullptr));
   size = cio.size();
   size.first -= 2;
@@ -85,11 +86,17 @@ void Snek::updateDisplay() const {
 
   cio[food.first][food.second] = 'a'; // Draw food over body in case of glitch
   old_end = body.back();
+
+  // TODO: cio << position(0,0) << to_string(game_tick);
+  int pos=0;
+  for(char c:std::to_string(game_tick))
+    cio[0][pos++]=c;
   cio << std::flush;
-  usleep(sleep_time);
+  //usleep(sleep_time);
 }
 
 bool Snek::move(Direction movement_input) {
+  game_tick++;
   // TOOD: return check for body
   if (movement_input != none)
     direction = movement_input;

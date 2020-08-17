@@ -11,6 +11,7 @@ class Snek {
   std::vector<Point> body; // [0] is head
   std::vector<wchar_t> body_graphics; // [0] is head
   Point food;
+  int game_tick;
 
 public:
   auto Size() const{return size;}
