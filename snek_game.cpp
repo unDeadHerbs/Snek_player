@@ -92,7 +92,7 @@ void Snek::updateDisplay() const {
   for(char c:std::to_string(game_tick))
     cio[0][pos++]=c;
   cio << std::flush;
-  //usleep(sleep_time);
+  usleep(sleep_time);
 }
 
 bool Snek::move(Direction movement_input) {
@@ -176,6 +176,12 @@ bool Snek::move(Direction movement_input) {
       }
     break;
   }
+  if (body[0].first == 0 || body[0].first == size.first + 1 ||
+      body[0].second == 0 || body[0].second == size.second + 1)
+    alive = false;
+  if (std::find(body.begin() + 1, body.end(), body[0]) !=
+      body.end()) // If the new head is in the body, die.
+    alive = false;
   if (body[0] == food){
     while (std::find(body.begin(), body.end(), food) !=
            body.end()) { // Generate a new food.
@@ -192,11 +198,5 @@ bool Snek::move(Direction movement_input) {
     body.pop_back(); // Don't get longer by one.
     body_graphics.pop_back();
   }
-  if (body[0].first == 0 || body[0].first == size.first + 1 ||
-      body[0].second == 0 || body[0].second == size.second + 1)
-    alive = false;
-  if (std::find(body.begin() + 1, body.end(), body[0]) !=
-      body.end()) // If the new head is in the body, die.
-    alive = false;
   return true;
 }
