@@ -31,9 +31,9 @@ std::queue<Point> dots;
   do {                                                                         \
   if (udh::cio[(X).first][(X).second] == ' '				\
 	     or udh::cio[(X).first][(X).second] == '.'			\
-	     or udh::cio[(X).first][(X).second] == ',' \ 
-or udh::cio[(X).first][(X).second] == '_') {				\
-      dots.push(X);                                                            \
+      or udh::cio[(X).first][(X).second] == ','				\
+      or udh::cio[(X).first][(X).second] == '_'){			\
+    dots.push(X);							\
       udh::cio[(X).first][(X).second] = SYM;                                   \
       udh::cio << std::flush;                                                  \
     }                                                                          \
@@ -51,7 +51,7 @@ or udh::cio[(X).first][(X).second] == '_') {				\
     }									\
   } while (0)
 #else
-#define DBG2(X)                                                                \
+#define DBG2(X,SYM)							\
   do {                                                                         \
   } while (0)
 #define CLEAR()                                                                \
@@ -116,45 +116,40 @@ Point& operator+=(Point & pnt, Direction const dir){
   return pnt=pnt+dir;
 }
 
-// TODO: Either add a flood fill to check for possibility or have a
-// max seek depth (usually easy to provide from above).
-std::optional<int> a_star_distance(std::vector<Point>const walls,Point from, Point to,int max_dist=0) {
-  // A Star doesn't utilize the fact that there are only two walls,
-  // one external and one the snake.  This can be used to remove a lot
-  // of search options.
+bool reachable_flood(std::vector<Point> walls,Point from, Point to,Point border){
   CLEAR3();
-  if(from==to)return 0;
-  auto metric=[=](std::pair<Point,int> pnt){return distance(pnt.first,to,1)*2+pnt.second*(pnt.second>3);};
-  auto gt=[=](std::pair<Point,int> lhs,std::pair<Point,int> rhs){return metric(lhs)>metric(rhs);};
-  std::deque<std::pair<Point,int>> tries{{from,0}};
-  std::deque<Point> tried;
-  while(tries.size()){
-    std::sort(tries.begin(),tries.end(),gt);
-    auto tri=tries.back();
-    tries.pop_back();
-    DBG3(tri.first); // segv?
-    DBG("= a_star try={"<<tri.first.first<<","<<tri.first.second<<"}\n");
+  if(from==to)return true;
+  std::queue<Point> to_consider{{from}};
+  while(!to_consider.empty()){
+    DBG("--- progress "<<to_consider.size()<<"/"<<walls.size()<<"/"<<border.first*border.second<<"\n");
+    Point p=to_consider.front();
+    DBG("---- point=(" << p.first<<","<<p.second<<")\n");
+    DBG3(p);
+    to_consider.pop();
     for (auto dir :
 	   {Direction::up, Direction::right, Direction::down, Direction::left}){
-      if(tri.first+dir==to)
-	return tri.second;
-      if(max_dist!=0 and tri.second > max_dist)
-	return {}; // TODO: Perhaps give a few tries?
-      if(std::find(walls.begin(),walls.end(),tri.first+dir)!=walls.end())
+      auto test=p+dir;
+      if(test==to)
+	return true;
+      if(std::find(walls.begin(),walls.end(),test)!=walls.end())
 	continue;
-      // TODO: check if in bounds
-      if(std::find(tried.begin(),tried.end(),tri.first+dir)!=tried.end())
-	// Segfaults on this =std::find=?
+      if(test.first<=0 or test.second<=0 or test.first>border.first or test.second>border.second)
+	// Somehow it was skipping over the border?
 	continue;
-      tries.push_back({tri.first+dir,tri.second+1});
-      tried.push_back(tri.first+dir);
+      to_consider.push(test);
+      walls.push_back(test);
     }
   }
-  return {};
+  DBG("--- Flood Fail\n");
+  return false;
 }
 
-bool reachable(std::vector<Point>const walls,Point from, Point to) {
-  return a_star_distance(walls,from,to).has_value();
+bool reachable(std::vector<Point>const walls,Point from, Point to,Point boarder) {
+  DBG("--- reachable?\n");
+  return reachable_flood(walls,from,to,boarder);
+  // TODO: This is still a pretty bad way of checking, much better
+  // than A* though.  Make something that understands regions and the
+  // single internal "wall" nature of the map.
 }
 
 typedef std::vector<Direction> Path;
@@ -180,12 +175,14 @@ int snek_aware_distance(Snek const & game,Point goal){
   auto xdist=std::abs(int(pnt.first)-int(goal.first));
   auto ydist=std::abs(int(pnt.second)-int(goal.second));
   int basic_dist=xdist+ydist;
+  if(walls.size()==1)
+    return basic_dist;
 
   pnt=walls[0];
   int linear_dist=basic_dist;
   while(pnt!=goal){
     DBG3(pnt);
-    if(auto intersect=std::find(walls.begin(),walls.end(),pnt);intersect!=walls.end()){
+    if(auto intersect=std::find(walls.begin()+1,walls.end(),pnt);intersect!=walls.end()){
       CLEAR3();
       auto wait_dist=std::min(std::distance(intersect,walls.end()),
 			      std::distance(intersect,walls.begin()));
@@ -210,7 +207,7 @@ int snek_aware_distance(Snek const & game,Point goal){
   int x_first_dist=basic_dist;
   while(pnt!=goal){
     DBG3(pnt);
-    if(auto intersect=std::find(walls.begin(),walls.end(),pnt);intersect!=walls.end()){
+    if(auto intersect=std::find(walls.begin()+1,walls.end(),pnt);intersect!=walls.end()){
       CLEAR3();
       auto wait_dist=std::min(std::distance(intersect,walls.end()),
 			      std::distance(intersect,walls.begin()));
@@ -233,7 +230,7 @@ int snek_aware_distance(Snek const & game,Point goal){
   int y_first_dist=basic_dist;
   while(pnt!=goal){
     DBG3(pnt);
-    if(auto intersect=std::find(walls.begin(),walls.end(),pnt);intersect!=walls.end()){
+    if(auto intersect=std::find(walls.begin()+1,walls.end(),pnt);intersect!=walls.end()){
       CLEAR3();
       auto wait_dist=std::min(std::distance(intersect,walls.end()),
 			      std::distance(intersect,walls.begin()));
@@ -311,27 +308,35 @@ Path AI(Snek const & game){
   while(!possibilities.empty()){
     auto trying=possibilities.pop();
     if(possibilities.empty())
-      if(trying.path.size()) // since all must descend from this, lets advance the board
+      if(trying.path.size()){ // since all must descend from this, lets advance the board
+	DBG("-- Short Cutting\n");
 	return trying.path;
+      }
+    DBG("- considering point\n");
     DBG2(trying.game.Body()[0],'_');
     for (auto dir :
 	   {Direction::up, Direction::right, Direction::down, Direction::left}) {
+      DBG("-- consider point "<<dir<<"\n");
       Snek t_game(trying.game);
       t_game.move(dir);
+      DBG("-- check valid point "<<dir<<"\n");
       if(!t_game.Alive())
 	continue;
-      //if (!reachable(t_game.Body(),t_game.Body().front(),t_game.Body().back()))
-      if (!a_star_distance(t_game.Body(),t_game.Body().front(),t_game.Body().back(),t_game.Body().size()))
+      if (!reachable(t_game.Body(),t_game.Body().front(),t_game.Body().back(),t_game.Size()))
 	continue;
       Path p(trying.path);
       p.push_back(dir);
+      DBG("-- check done point "<<dir<<"\n");
       if(t_game.Body()[0]==goal)
 	return p;
+      DBG("-- Adding consider point "<<dir<<"\n");
       DBG2(t_game.Body()[0],'.');
       possibilities.push({p,t_game});
     }
+    DBG("- Adding considered point\n");    
     DBG2(trying.game.Body()[0],',');
   }
+  DBG("No Path Found\n");
   return {};
 }
 
@@ -347,8 +352,11 @@ int main() {
   auto p = AI(s);
   DBG("Got a path of length " << p.size() << "\n");
   while (s.Alive()) {
-    if (!p.size())
+    if (!p.size()){
+      DBG("\n\nNext Food\n");
       p = AI(s);
+      DBG("Moving\n");
+    }
     if(!p.size()) break;
     s.move(p.front());
     p.erase(p.begin(),p.begin()+1); // pop front
