@@ -3,7 +3,7 @@
 #include <cmath>
 #include <map>
 #include <deque>
-#include <forward_list>
+#include <list>
 #include <optional>
 #include <queue>
 #include <iterator>
@@ -261,6 +261,13 @@ int snek_aware_distance(Snek const & game,Point goal){
   return std::min(std::min(x_first_dist,y_first_dist),linear_dist);
 }
 
+int body_to_goal_dist(std::vector<Point> body,Point goal){
+  int dist=distance(body[0],goal,1);
+  for(auto segment:body)
+    dist=std::min(dist,distance(segment,goal,1));
+  return dist;
+}
+
 int wall_count(Snek const & game){
   int c=0;
   for (auto dir :
@@ -277,7 +284,7 @@ template<typename T,typename VAL,bool GREATER=true>
 class priority_stack{
   // TODO: assert that GT is int(*)(T);
   VAL val;
-  std::forward_list<std::pair<T,int>> list;
+  std::list<std::pair<T,int>> list;
 public:
   priority_stack(VAL op):val(op){}
   bool empty()const{return list.empty();}
@@ -296,12 +303,20 @@ public:
     while(std::next(ptr)!=list.end() and ((GREATER and std::next(ptr)->second>v)
 				       or (!GREATER  and std::next(ptr)->second<v)))
       ++ptr;
-    list.insert_after(ptr,{elm,v});
+    list.insert(ptr,{elm,v});
   }
   T pop(){
     auto ret=list.front().first;
     list.pop_front();
     return ret;
+  }
+  T operator[](int dep)const{
+    if(dep>=list.size())
+      throw "";
+    auto it=list.begin();
+    while(dep--)
+      it=std::next(it);
+    return it->first;
   }
 };
 
@@ -311,31 +326,122 @@ struct Consideration{
 };
 
 Path AI(Snek const & game){
-  auto goal=game.Food();
+  //auto init_back=game.Body().back();
+  auto food=game.Food();
   CLEAR();
-  auto metric=[=](Consideration con)->int{
-		auto b=con.game.Body();
-		int escape_head            = -300*(con.path.size()<3);
-		int distance_guess         =   40*(snek_aware_distance(con.game,goal)+con.path.size());
-		int follow_walls           =   30*wall_count(con.game);
-		int prefer_developed_paths =   15*snek_aware_distance(con.game,goal); // dis-prefer undeveloped
-		int prefer_lots_of_turns   =  -30*(count_turns(con.path)*(count_turns(con.path)>5));
-		int prefer_less_turns      =   10*(count_turns(con.path)
-						   +b[0].first!=goal.first+b[0].second!=goal.second);
-		int when_lost_find_tail    =   -1*(snek_aware_distance(con.game,b.back())
-						   +distance(b[0],b.back(),1));
-		return
-		  distance_guess+prefer_less_turns+when_lost_find_tail+prefer_developed_paths + escape_head+follow_walls+prefer_lots_of_turns;
+  auto metric=[](Point goal){
+		return [=](Consideration con)->int{
+			 auto b=con.game.Body();
+			 auto turns=count_turns(con.path);
+			 auto goal_dist=snek_aware_distance(con.game,goal);
+			 auto goal_lin_dist=distance(b[0],goal,1);
+			 auto tail_dist=snek_aware_distance(con.game,b.back());
+			 auto tail_lin_dist=distance(b[0],b.back(),1);
+			 auto depth=con.path.size();
+			 auto is_simple_path=(goal_dist==goal_lin_dist);
+
+			 if(depth<3)
+			   // escape the head
+			   return -200000+depth;
+			 if(is_simple_path)
+			   // take simple path with small preference to developed paths
+			   return -100000+10.1*goal_dist+10*depth;
+			 // TODO: (-1)*size.first * size.second?
+			 if(!reachable(b,b[0],goal,con.game.Size()))
+			   // follow tail until better
+			   return -500+tail_dist-depth;
+			 if(body_to_goal_dist(b,goal)<goal_dist)
+			   // follow tail
+			   return -500+tail_dist-depth;
+
+			 int follow_tail_if_near      =  -80 * ((tail_dist<5)
+								* !is_simple_path * (b.size()>goal_dist));
+			 int distance_guess           =   40 * (goal_dist+depth);
+			 int less_distance_if_wiggles =  -30 * goal_dist*(turns>10)*(turns<b.size()/4);
+			 int follow_walls             =   30 * wall_count(con.game);
+			 // TODO: Make follow_walls a property of the path not the head.
+			 // int avoid_small_bubbles   =   20 * bubble_count(con.game);
+			 int unprefer_undeveloped     =   15 * goal_dist;
+			 int prefer_developed_paths   =  -10 * depth;
+			 int prefer_lots_of_turns     =  -15 * turns*(turns>5);
+			 int prefer_less_turns        =   10 * (turns/(depth/20+1)
+								+b[0].first!=goal.first+b[0].second!=goal.second);
+			 int when_lost_find_tail      =   -1 * (tail_lin_dist+tail_dist);
+			 int developed_simple_path    =    1 * goal_dist * (goal_dist==goal_lin_dist);
+
+			 return
+			   distance_guess+prefer_less_turns+when_lost_find_tail
+			   +prefer_developed_paths +follow_walls+prefer_lots_of_turns
+			   +less_distance_if_wiggles+follow_tail_if_near+unprefer_undeveloped
+			   +developed_simple_path;
+		       };
 	      };
-  priority_stack<Consideration,decltype(metric),false> possibilities(metric);
+  priority_stack<Consideration,decltype(metric(food)),false> possibilities(metric(food));
   possibilities.push({{},game});
+#if 0
+  priority_stack<Consideration,decltype(metric(init_back)),false> possibilities_tail(metric(init_back));
+  possibilities_tail.push({{},game});
+  DBG("-- Seed with path to tail\n");
+  while(!possibilities_tail.empty()){
+    auto trying=possibilities_tail.pop();
+    DBG2(trying.game.Body()[0],'_');
+    for (auto dir :
+	   {Direction::up, Direction::right, Direction::down, Direction::left}) {
+      DBG("-- consider point "<<dir<<"\n");
+      Snek t_game(trying.game);
+      t_game.move(dir);
+      DBG("-- check valid point "<<dir<<"\n");
+      if(!t_game.Alive())
+	continue;
+      if (!reachable(t_game.Body(),t_game.Body().front(),t_game.Body().back(),t_game.Size()))
+	continue;
+      Path p(trying.path);
+      p.push_back(dir);
+      DBG("-- check done point "<<dir<<"\n");
+      if(t_game.Body()[0]==food)
+	return p; // Just in case.
+      if(t_game.Body()[0]==init_back)
+	goto search;
+      DBG("-- Adding consider point "<<dir<<"\n");
+      DBG2(t_game.Body()[0],'.');
+      possibilities.push({p,t_game});
+      possibilities_tail.push({p,t_game});
+    }
+    DBG("- Adding considered point\n");
+    DBG2(trying.game.Body()[0],',');
+  }
+ search:
+  DBG("-- Starting search Proper\n");
+#endif
   while(!possibilities.empty()){
+    /*
+    // If top 20 ideas all have the same start, use that.
+    Path init_check(possibilities[0].path);
+    if(possibilities.size()>20){
+      for(int dep=0;dep<20
+		     and !init_check.empty();++dep)
+	init_check=shared_front(init_check,
+				possibilities[dep].path);
+      if(!init_check.empty())
+	;//return init_check;
+    }
+    */
+
     auto trying=possibilities.pop();
     if(possibilities.empty())
       if(trying.path.size()){ // since all must descend from this, lets advance the board
 	DBG("-- Short Cutting\n");
 	return trying.path;
       }
+    if(!possibilities.empty())
+    if(trying.path.size()>5+possibilities[0].path.size()
+       and trying.path.size()>20){
+      Path ret;
+      for(int p=0;p<20;p++)
+	ret.push_back(trying.path[p]);
+      return ret;
+    }
+
     DBG("- considering point\n");
     DBG2(trying.game.Body()[0],'_');
     for (auto dir :
@@ -351,7 +457,7 @@ Path AI(Snek const & game){
       Path p(trying.path);
       p.push_back(dir);
       DBG("-- check done point "<<dir<<"\n");
-      if(t_game.Body()[0]==goal)
+      if(t_game.Body()[0]==food)
 	return p;
       DBG("-- Adding consider point "<<dir<<"\n");
       DBG2(t_game.Body()[0],'.');
