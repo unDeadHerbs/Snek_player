@@ -27,11 +27,14 @@ std::ofstream log_file;
 #if DEBUG2
 #include "Console-IO/ioconsole.hpp"
 std::queue<Point> dots;
-#define DBG2(X)                                                                \
+#define DBG2(X,SYM)							\
   do {                                                                         \
-    if (udh::cio[(X).first][(X).second] == ' ') {                              \
+  if (udh::cio[(X).first][(X).second] == ' '				\
+	     or udh::cio[(X).first][(X).second] == '.'			\
+	     or udh::cio[(X).first][(X).second] == ',' \ 
+or udh::cio[(X).first][(X).second] == '_') {				\
       dots.push(X);                                                            \
-      udh::cio[(X).first][(X).second] = '.';                                   \
+      udh::cio[(X).first][(X).second] = SYM;                                   \
       udh::cio << std::flush;                                                  \
     }                                                                          \
   } while (0)
@@ -40,7 +43,9 @@ std::queue<Point> dots;
     while (dots.size()) {                                                      \
       auto d = dots.front();                                                   \
       dots.pop();                                                              \
-      if(udh::cio[d.first][d.second] == '.')				\
+      if(udh::cio[d.first][d.second] == '.' \
+	 or udh::cio[d.first][d.second] == ',' \
+	 or udh::cio[d.first][d.second] == '_')				\
       udh::cio[d.first][d.second] = ' ';                                       \
       udh::cio << std::flush;                                                  \
     }									\
@@ -169,7 +174,7 @@ int count_turns(Path v) {
   return c;
 }
 
-int snek_aware_distance(Snek game,Point goal){
+int snek_aware_distance(Snek const & game,Point goal){
   auto walls=game.Body();
   auto pnt=walls[0];
   auto xdist=std::abs(int(pnt.first)-int(goal.first));
@@ -291,18 +296,16 @@ Path AI(Snek const & game){
   auto goal=game.Food();
   CLEAR();
   auto metric=[=](Consideration con)->int{
-		int distance_guess=snek_aware_distance(con.game,goal)+con.path.size();
-		int prefer_less_turns=count_turns(con.path);
-		int when_lost_find_tail=(snek_aware_distance(con.game,con.game.Body().back())
-					 +distance(con.game.Body()[0],con.game.Body().back(),1))>>2;
-		int prefer_developed_paths=snek_aware_distance(con.game,goal)>>2;
-		int escape_head=(con.path.size()<5)*-5;
+		auto b=con.game.Body();
+		int distance_guess=10*(snek_aware_distance(con.game,goal)+con.path.size());
+		int prefer_less_turns=5*count_turns(con.path);
+		int when_lost_find_tail=(snek_aware_distance(con.game,b.back())
+					 +distance(b[0],b.back(),1));
+		int prefer_developed_paths=5*snek_aware_distance(con.game,goal); // dis-prefer undeveloped
+		int escape_head=-100*(con.path.size()<5);
 		return
 		  distance_guess+prefer_less_turns+when_lost_find_tail+prefer_developed_paths + escape_head;
 	      };
-  auto comp=[&](Consideration lhs,Consideration rhs){
-	      return metric(lhs)>metric(rhs);
-	    };
   priority_stack<Consideration,decltype(metric),false> possibilities(metric);
   possibilities.push({{},game});
   while(!possibilities.empty()){
@@ -310,6 +313,7 @@ Path AI(Snek const & game){
     if(possibilities.empty())
       if(trying.path.size()) // since all must descend from this, lets advance the board
 	return trying.path;
+    DBG2(trying.game.Body()[0],'_');
     for (auto dir :
 	   {Direction::up, Direction::right, Direction::down, Direction::left}) {
       Snek t_game(trying.game);
@@ -323,9 +327,10 @@ Path AI(Snek const & game){
       p.push_back(dir);
       if(t_game.Body()[0]==goal)
 	return p;
-      DBG2(t_game.Body()[0]);
+      DBG2(t_game.Body()[0],'.');
       possibilities.push({p,t_game});
     }
+    DBG2(trying.game.Body()[0],',');
   }
   return {};
 }
