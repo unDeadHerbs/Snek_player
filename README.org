@@ -72,3 +72,27 @@
   apple.  This would require running an A* from the apple to each
   other free (or likely to be free) square in the metric for getting
   to the apple, doable but slow.
+** Transcribe Audio Log Here
+** 09848 
+   The A* algorithm works by having a fast good-ish metric for how far
+   away the goal is and then using that to prioritize paths.  The
+   metric I wrote there works by doing the same thing, wrapped around
+   A*.  This is very slow for two reasons; firstly, A* is pretty slow,
+   I have ranted before about how A* really likes it's own worst
+   case; and secondly, the entire state of the A* is dropped each time
+   since it's hard to reuse.
+
+   I could fix this by either helping the inner A* to be better with
+   some variants, or I could try to use only one layer of search by
+   improving the initial distance guess.  I'm going to go with the
+   latter.
+
+   Take a small number of taxicab paths directly to the goal, return
+   the length of the path (same for all) plus the amount of time that
+   would be needed to wait along each path.  The amount of time needed
+   to wait is, taking the first intersection with the body, how much
+   tail would need to be waited for once we get there.  Just as in the
+   initial metric, this will return mostly invalid paths, but it will
+   give an estimate of how far away the correct path is (since the
+   wait time is also, at worst, half the distance to go around the
+   tail).

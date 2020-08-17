@@ -5,6 +5,7 @@
 #include <deque>
 #include <optional>
 #include <queue>
+#include <iterator>
 #include "Console-IO/ioconsole.hpp"
 
 #define DEBUG1 0
@@ -105,51 +106,8 @@ Point operator+(Point const pnt, Direction const dir){
     return {pnt.first-1,pnt.second};
   }
 }
-
-std::optional<int> a_star_distance_something_wrong(Snek const &s,Point from, Point to) {
-  if(from==to)return 0;
-  auto walls = s.Body();
-  DBG("= a_star start\n");
-  auto metric=[=](std::pair<Point,int> pnt){
-		return distance(pnt.first,to,2)*2+pnt.second;
-	      };
-  auto comp=[&](std::pair<Point,int> lhs,std::pair<Point,int> rhs){
-	      return metric(lhs)>metric(rhs);
-	    };
-  //std::priority_queue<std::pair<Point,int>,std::vector<std::pair<Point,int>>,decltype(comp)> q(comp);
-  std::deque<std::pair<Point,int>> q{{from,0}};
-  while(q.size()){
-    std::sort(q.begin(),q.end(),comp);
-    DBG("= a_star size = "<<q.size()<<"\n");
-    auto n=q.back();
-    q.pop_back();
-    DBG("== a_star distance = "<<distance(n.first,to,2)<<"\n");
-    DBG("== a_star length = "<<n.second<<"\n");
-    DBG("== a_star metric = "<<metric(n)<<"\n");
-    DBG("== a_star pos = {"<<n.first.first<<","<<n.first.second<<"}\n");
-    DBG3(n.first);
-   auto allowable=[=](Point pt)->bool{
-		    if(pt==to)
-		      return true;
-		    if(std::find(walls.begin(),walls.end(),pt)!=walls.end())
-		      return false;
-		    if(pt.first<0 or pt.second<0 or pt.first>s.Size().first or pt.second>s.Size().second)
-		      return false;
-		    return true;
-		  };
-    for (auto dir :
-	   {Direction::up, Direction::right, Direction::down, Direction::left}){
-      if(n.first+dir == to or distance(n.first+dir,to,1)<2)
-	return n.second;
-      if(allowable(n.first+dir)){
-	DBG("=== adding "<<dir<<"\n");
-	q.push_back({n.first+dir,n.second+1});
-      }
-    }
-  }
-  DBG("= a_star not found\n");
-  CLEAR3();
-  return {};
+Point& operator+=(Point & pnt, Direction const dir){
+  return pnt=pnt+dir;
 }
 
 // TODO: Either add a flood fill to check for possibility or have a
@@ -189,19 +147,18 @@ std::optional<int> a_star_distance(std::vector<Point>const walls,Point from, Poi
   return {};
 }
 
-int metric_distance(Snek const &s,Point food, int dims = 1) {
-  return distance(s.Body()[0], food, dims);
+bool reachable(std::vector<Point>const walls,Point from, Point to) {
+  return a_star_distance(walls,from,to).has_value();
 }
 
-typedef std::queue<Direction> Path;
-typedef std::pair<Path, Snek> Consideration;
+typedef std::vector<Direction> Path;
 
-int count_turns(std::queue<Direction> v) {
+int count_turns(Path v) {
   auto c = 0;
   Direction ld = v.front();
   while (v.size()) {
     auto d = v.front();
-    v.pop();
+    v.erase(v.begin(),v.begin()+1);//pop();
     if (ld != d) {
       ld = d;
       c++;
@@ -210,127 +167,131 @@ int count_turns(std::queue<Direction> v) {
   return c;
 }
 
-std::map<Point,int> contention;
-int consideration_metric(Consideration const & val,Point food,int /*&*/ seek_distance){
-  // TODO: This has become very expensive and should be memoized
+int snek_aware_distance(Snek game,Point goal){
+  auto walls=game.Body();
+  auto pnt=walls[0];
+  auto xdist=std::abs(int(pnt.first)-int(goal.first));
+  auto ydist=std::abs(int(pnt.second)-int(goal.second));
+  int basic_dist=xdist+ydist;
 
-  // A memoizer is a band-aid, the queue shouldn't be re-evaluating
-  // known points that much.
-
-  // If =contention= isn't needed any more then the values are fully
-  // memoize-able and perhaps =std::priority_queue= will work again?
-
-  // That depends on the implementation of =std::priority_queue=.
-
-  // Let's try switching back and then make a =priority_stack= if this
-  // is still a problem.
-
-  // That's much faster and seems to not re-evaluate too much, a more
-  // bespoke structure would probably still be better, but that's not
-  // a good spending of time at the moment.
-  int md=seek_distance*10;   // If past seek_distance then just be big
-			    // as to indicate to not search here.
-  auto ad=a_star_distance(val.second.Body(),val.second.Body()[0],food,seek_distance+4);
-  if(ad) {
-    md=*ad;
-    seek_distance=md*1.3+3;
-    // Dynamically reduce the seek distance as we approach the goal.
-
-    // TODO: This needs undoing if the path is a failure on other metrics.
+  pnt=walls[0];
+  int linear_dist=basic_dist;
+  while(pnt!=goal){
+    DBG3(pnt);
+    if(auto intersect=std::find(walls.begin(),walls.end(),pnt);intersect!=walls.end()){
+      CLEAR3();
+      auto wait_dist=std::min(std::distance(intersect,walls.end()),
+			      std::distance(intersect,walls.begin()));
+      linear_dist+=wait_dist;
+      break;
+    }
+    xdist=std::abs(int(pnt.first)-int(goal.first));
+    ydist=std::abs(int(pnt.second)-int(goal.second));
+    if(xdist>ydist)
+      if(pnt.first>goal.first)
+	pnt+=Direction::left;
+      else
+	pnt+=Direction::right;
+    else
+      if(pnt.second>goal.second)
+	pnt+=Direction::up;
+      else
+	pnt+=Direction::down;
   }
 
-  auto turns=count_turns(val.first);
-
-  auto heuristic_distance = md*(1+(md>5)*4); // Consider decreasing this distance very important 4
-  auto current_distance = val.first.size();
-  //return md+current_distance;
-  auto quick_explore = val.first.size()<5;
-  //auto to_many_turns = (1+turns>1+(turns>3)*turns*(1+(turns>5)*turns)*(1+(turns>7)*turns));
-  auto to_many_turns = turns;
-  auto is_close = (md<3);// && (contention[val.second.Body()[0]]<3);
-  //auto contentiousness = pow(contention[val.second.Body()[0]],2);
-
-  auto distance_cost=heuristic_distance+current_distance;
-  //return distance_cost;
-  //auto dislikability=to_many_turns+(1+!quick_explore)+(1+!is_close);//+contentiousness;
-  auto dislikability=to_many_turns;
-
-  return distance_cost+dislikability;
-}
-
-template<typename T,typename U,typename V>
-void drop_all_but_n(std::priority_queue<T,U,V>& q,int count){
-  // TODO: This is a patch instead of writing =priority_stack=.
-  if(q.size()>count){
-    U tmp;
-    while(tmp.size()<count){
-      tmp.push_back(q.top());
-      q.pop();
+  pnt=walls[0];
+  int x_first_dist=basic_dist;
+  while(pnt!=goal){
+    DBG3(pnt);
+    if(auto intersect=std::find(walls.begin(),walls.end(),pnt);intersect!=walls.end()){
+      CLEAR3();
+      auto wait_dist=std::min(std::distance(intersect,walls.end()),
+			      std::distance(intersect,walls.begin()));
+      x_first_dist+=wait_dist;
+      break;
     }
-    while(q.size())q.pop();
-    while(tmp.size()){
-      q.push(tmp.back());
-      tmp.pop_back();
-    }
+    if(pnt.first!=goal.first)
+      if(pnt.first>goal.first)
+	pnt+=Direction::left;
+      else
+	pnt+=Direction::right;
+    else
+      if(pnt.second>goal.second)
+	pnt+=Direction::up;
+      else
+	pnt+=Direction::down;
   }
+
+  pnt=walls[0];
+  int y_first_dist=basic_dist;
+  while(pnt!=goal){
+    DBG3(pnt);
+    if(auto intersect=std::find(walls.begin(),walls.end(),pnt);intersect!=walls.end()){
+      CLEAR3();
+      auto wait_dist=std::min(std::distance(intersect,walls.end()),
+			      std::distance(intersect,walls.begin()));
+      y_first_dist+=wait_dist;
+      break;
+    }
+    if(pnt.second==goal.second)
+      if(pnt.first>goal.first)
+	pnt+=Direction::left;
+      else
+	pnt+=Direction::right;
+    else
+      if(pnt.second>goal.second)
+	pnt+=Direction::up;
+      else
+	pnt+=Direction::down;
+  }
+  // TODO: add waiting time
+  return std::min(std::min(x_first_dist,y_first_dist),linear_dist);
 }
 
-Path Astar(Snek s) {
+struct Consideration{
+  Path path;
+  Snek game;
+};
+
+Path AI(Snek const & game){
+  auto goal=game.Food();
   CLEAR();
-  // TODO: This function slows down dramatically as more currently active paths are added.
-  contention.clear();
-  DBG("- In Astar\n");
-  auto target=s.Food();
-  auto tail_dist=*a_star_distance(s.Body(),s.Body().front(),s.Body().back());
-  // That's guaranteed to be non-null by the last search.
-  int food_linear=distance(s.Body()[0],target,1);
-  auto start_dist_check=a_star_distance(s.Body(),s.Body().front(),target,food_linear+4);
-  // If the food isn't within the linear distance then the body is in the way.
-  int start_dist;
-  if(start_dist_check)
-    start_dist=*start_dist_check;
-  else{
-    start_dist=tail_dist;
-    target=s.Body().back();
-  }
-  auto comp = [=,&start_dist](Consideration const &lhs, Consideration const &rhs) {
-		return consideration_metric(lhs,target,start_dist) > consideration_metric(rhs,target,start_dist);
-  };
+  auto metric=[=](Consideration con)->int{
+		int distance_guess=snek_aware_distance(con.game,goal)+con.path.size();
+		int prefer_less_turns=count_turns(con.path);
+		int when_lost_find_tail=(snek_aware_distance(con.game,con.game.Body().back())
+					 +distance(con.game.Body()[0],con.game.Body().back(),1))>>2;
+		int prefer_developed_paths=snek_aware_distance(con.game,goal)>>2;
+		int escape_head=(con.path.size()<5)*-5;
+		return
+		  distance_guess+prefer_less_turns+when_lost_find_tail+prefer_developed_paths + escape_head;
+	      };
+  auto comp=[&](Consideration lhs,Consideration rhs){
+	      return metric(lhs)>metric(rhs);
+	    };
   std::priority_queue<Consideration,std::deque<Consideration>,decltype(comp)> possibilities(comp);
-  possibilities.push({{}, s});
-  for (;;) {
-    if(!possibilities.size()){
-      possibilities.push({{}, s});
-      start_dist=tail_dist;
-      target=s.Body().back();
-      //CLEAR();
-    }
-    //drop_all_but_n(possibilities,5);
-    DBG("-- have " << possibilities.size() << " options\n");
-    auto current = possibilities.top();
+  possibilities.push({{},game});
+  while(possibilities.size()){
+    auto trying=possibilities.top();
     possibilities.pop();
-    DBG("-- Top has " << current.first.size() << " steps\n");
-    DBG("-- Top has " << metric_distance(current.second) << " to go\n");
+    if(!possibilities.size())
+      if(trying.path.size()) // since all must descend from this, lets advance the board
+	return trying.path;
     for (auto dir :
-         {Direction::up, Direction::right, Direction::down, Direction::left}) {
-      Snek ss(current.second);
-      ss.move(dir);
-      if (ss.Alive()){
-	auto p = current.first;
-	p.push(dir);
-	if (ss.Body()[0] == target and a_star_distance(ss.Body(),target,ss.Body().back())) {
-	  DBG("--- found\n");
-	  //CLEAR();
-	  return p;
-	}
-	DBG("--- consideration\n");
-	contention[ss.Body()[0]]++;
-	if(a_star_distance(ss.Body(),ss.Body().front(),ss.Body().back())){
-	  DBG2(ss.Body()[0]);
-	  possibilities.push({p, ss});
-	}
-      }else
-	DBG("--- non-consider\n");
+	   {Direction::up, Direction::right, Direction::down, Direction::left}) {
+      Snek t_game(trying.game);
+      t_game.move(dir);
+      if(!t_game.Alive())
+	continue;
+      //if (!reachable(t_game.Body(),t_game.Body().front(),t_game.Body().back()))
+      if (!a_star_distance(t_game.Body(),t_game.Body().front(),t_game.Body().back(),t_game.Body().size()))
+	continue;
+      Path p(trying.path);
+      p.push_back(dir);
+      if(t_game.Body()[0]==goal)
+	return p;
+      DBG2(t_game.Body()[0]);
+      possibilities.push({p,t_game});
     }
   }
   return {};
@@ -344,15 +305,15 @@ int main() {
   Snek s;
   s.drawWalls();
   s.updateDisplay();
-  DBG("Call to Astar\n");
-  auto p = Astar(s);
+  DBG("Call to AI\n");
+  auto p = AI(s);
   DBG("Got a path of length " << p.size() << "\n");
   while (s.Alive()) {
     if (!p.size())
-      p = Astar(s);
+      p = AI(s);
     if(!p.size()) break;
     s.move(p.front());
-    p.pop();
+    p.erase(p.begin(),p.begin()+1); // pop front
     s.updateDisplay();
   }
   // TODO: Wait
