@@ -2,8 +2,10 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <deque>
 #include <optional>
 #include <queue>
+#include "Console-IO/ioconsole.hpp"
 
 #define DEBUG1 0
 #if DEBUG1
@@ -49,9 +51,8 @@ std::queue<Point> dots;
   } while (0)
 #endif
 
-#define DEBUG3 1
+#define DEBUG3 0
 #if DEBUG3
-#include "Console-IO/ioconsole.hpp"
 #include <unistd.h>
 std::queue<Point> dots3;
 #define DBG3(X)								\
@@ -114,7 +115,7 @@ std::optional<int> a_star_distance_something_wrong(Snek const &s,Point from, Poi
 	      return metric(lhs)>metric(rhs);
 	    };
   //std::priority_queue<std::pair<Point,int>,std::vector<std::pair<Point,int>>,decltype(comp)> q(comp);
-  std::vector<std::pair<Point,int>> q{{from,0}};
+  std::deque<std::pair<Point,int>> q{{from,0}};
   while(q.size()){
     std::sort(q.begin(),q.end(),comp);
     DBG("= a_star size = "<<q.size()<<"\n");
@@ -159,14 +160,13 @@ std::optional<int> a_star_distance(std::vector<Point>const walls,Point from, Poi
   if(from==to)return 0;
   auto metric=[=](std::pair<Point,int> pnt){return distance(pnt.first,to,1)*2+pnt.second*(pnt.second>3);};
   auto gt=[=](std::pair<Point,int> lhs,std::pair<Point,int> rhs){return metric(lhs)>metric(rhs);};
-  std::vector<std::pair<Point,int>> tries{{from,0}};
-  std::vector<Point> tried;
+  std::deque<std::pair<Point,int>> tries{{from,0}};
+  std::deque<Point> tried;
   while(tries.size()){
     std::sort(tries.begin(),tries.end(),gt);
     auto tri=tries.back();
-    tried.push_back(tri.first);
     tries.pop_back();
-    DBG3(tri.first);
+    DBG3(tri.first); // segv?
     DBG("= a_star try={"<<tri.first.first<<","<<tri.first.second<<"}\n");
     for (auto dir :
 	   {Direction::up, Direction::right, Direction::down, Direction::left}){
@@ -178,8 +178,10 @@ std::optional<int> a_star_distance(std::vector<Point>const walls,Point from, Poi
 	continue;
       // TODO: check if in bounds
       if(std::find(tried.begin(),tried.end(),tri.first+dir)!=tried.end())
+	// Segfaults on this =std::find=?
 	continue;
       tries.push_back({tri.first+dir,tri.second+1});
+      tried.push_back(tri.first+dir);
     }
   }
   return {};
@@ -224,12 +226,12 @@ int consideration_metric(Consideration const & val,Point food,int & seek_distanc
   // That's much faster and seems to not re-evaluate too much, a more
   // bespoke structure would probably still be better, but that's not
   // a good spending of time at the moment.
-  int md=seek_distance*2;   // If past seek_distance then just be big
+  int md=seek_distance*10;   // If past seek_distance then just be big
 			    // as to indicate to not search here.
-  auto ad=a_star_distance(val.second.Body(),val.second.Body()[0],food,seek_distance*2);
+  auto ad=a_star_distance(val.second.Body(),val.second.Body()[0],food,seek_distance+4);
   if(ad) {
     md=*ad;
-    seek_distance=md*4;
+    seek_distance=md*1.3+3;
     // Dynamically reduce the seek distance as we approach the goal.
 
     // TODO: This needs undoing if the path is a failure on other metrics.
@@ -239,7 +241,7 @@ int consideration_metric(Consideration const & val,Point food,int & seek_distanc
 
   auto heuristic_distance = md*(1+(md>5)*4);
   auto current_distance = val.first.size();
-  return md+current_distance;
+  //return md+current_distance;
   auto quick_explore = val.first.size()<5;
   auto to_many_turns = (1+turns>1+(turns>3)*turns*(1+(turns>5)*turns)*(1+(turns>7)*turns));
   auto is_close = (md<3) && (contention[val.second.Body()[0]]<3);
@@ -273,23 +275,31 @@ Path Astar(Snek s) {
   // TODO: This function slows down dramatically as more currently active paths are added.
   contention.clear();
   DBG("- In Astar\n");
-  auto food=s.Food();
+  auto target=s.Food();
   auto tail_dist=*a_star_distance(s.Body(),s.Body().front(),s.Body().back());
   // That's guaranteed to be non-null by the last search.
-  int food_linear=distance(s.Body()[0],food,1);
-  auto start_dist_check=a_star_distance(s.Body(),s.Body().front(),food,food_linear);
+  int food_linear=distance(s.Body()[0],target,1);
+  auto start_dist_check=a_star_distance(s.Body(),s.Body().front(),target,food_linear+4);
   // If the food isn't within the linear distance then the body is in the way.
   int start_dist;
   if(start_dist_check)
     start_dist=*start_dist_check;
-  else
+  else{
     start_dist=tail_dist;
+    target=s.Body().back();
+  }
   auto comp = [=,&start_dist](Consideration const &lhs, Consideration const &rhs) {
-		return consideration_metric(lhs,food,start_dist) > consideration_metric(rhs,food,start_dist);
+		return consideration_metric(lhs,target,start_dist) > consideration_metric(rhs,target,start_dist);
   };
   std::priority_queue<Consideration,std::deque<Consideration>,decltype(comp)> possibilities(comp);
   possibilities.push({{}, s});
   for (;;) {
+    if(!possibilities.size()){
+      possibilities.push({{}, s});
+      start_dist=tail_dist;
+      target=s.Body().back();
+      CLEAR();
+    }
     //drop_all_but_n(possibilities,5);
     DBG("-- have " << possibilities.size() << " options\n");
     auto current = possibilities.top();
@@ -303,16 +313,17 @@ Path Astar(Snek s) {
       if (ss.Alive()){
 	auto p = current.first;
 	p.push(dir);
-        if (ss.Body()[0] == food and a_star_distance(ss.Body(),food,ss.Body().back())) {
-	 DBG("--- found\n");
+	if (ss.Body()[0] == target and a_star_distance(ss.Body(),target,ss.Body().back())) {
+	  DBG("--- found\n");
        	  CLEAR();
 	  return p;
 	}
 	DBG("--- consideration\n");
 	contention[ss.Body()[0]]++;
-	DBG2(ss.Body()[0]);
-	if(a_star_distance(ss.Body(),ss.Body().front(),ss.Body().back()))
+	if(a_star_distance(ss.Body(),ss.Body().front(),ss.Body().back())){
+	  DBG2(ss.Body()[0]);
 	  possibilities.push({p, ss});
+	}
       }else
 	DBG("--- non-consider\n");
     }
