@@ -3,6 +3,7 @@
 #include <cmath>
 #include <map>
 #include <deque>
+#include <forward_list>
 #include <optional>
 #include <queue>
 #include <iterator>
@@ -155,6 +156,7 @@ typedef std::vector<Direction> Path;
 
 int count_turns(Path v) {
   auto c = 0;
+  if(v.empty())return 0;
   Direction ld = v.front();
   while (v.size()) {
     auto d = v.front();
@@ -248,6 +250,38 @@ int snek_aware_distance(Snek game,Point goal){
   return std::min(std::min(x_first_dist,y_first_dist),linear_dist);
 }
 
+template<typename T,typename VAL,bool GREATER=true>
+class priority_stack{
+  // TODO: assert that GT is int(*)(T);
+  VAL val;
+  std::forward_list<std::pair<T,int>> list;
+public:
+  priority_stack(VAL op):val(op){}
+  bool empty()const{return list.empty();}
+  void push(T elm){
+    int v=val(elm);
+    if(empty()){
+      list.push_front({elm,v});
+      return;
+    }
+    auto ptr=list.begin();
+    if((!GREATER and v<ptr->second) or
+       (GREATER and v>ptr->second)){
+      list.push_front({elm,v});
+      return;
+    }
+    while(std::next(ptr)!=list.end() and ((GREATER and std::next(ptr)->second>v)
+				       or (!GREATER  and std::next(ptr)->second<v)))
+      ++ptr;
+    list.insert_after(ptr,{elm,v});
+  }
+  T pop(){
+    auto ret=list.front().first;
+    list.pop_front();
+    return ret;
+  }
+};
+
 struct Consideration{
   Path path;
   Snek game;
@@ -269,12 +303,11 @@ Path AI(Snek const & game){
   auto comp=[&](Consideration lhs,Consideration rhs){
 	      return metric(lhs)>metric(rhs);
 	    };
-  std::priority_queue<Consideration,std::deque<Consideration>,decltype(comp)> possibilities(comp);
+  priority_stack<Consideration,decltype(metric),false> possibilities(metric);
   possibilities.push({{},game});
-  while(possibilities.size()){
-    auto trying=possibilities.top();
-    possibilities.pop();
-    if(!possibilities.size())
+  while(!possibilities.empty()){
+    auto trying=possibilities.pop();
+    if(possibilities.empty())
       if(trying.path.size()) // since all must descend from this, lets advance the board
 	return trying.path;
     for (auto dir :
