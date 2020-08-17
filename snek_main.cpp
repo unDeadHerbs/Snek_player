@@ -287,22 +287,13 @@ Path Astar(Snek s) {
   auto comp = [=,&start_dist](Consideration const &lhs, Consideration const &rhs) {
 		return consideration_metric(lhs,food,start_dist) > consideration_metric(rhs,food,start_dist);
   };
-  std::priority_queue<Consideration,std::vector<Consideration>,decltype(comp)> possibilities(comp);
+  std::priority_queue<Consideration,std::deque<Consideration>,decltype(comp)> possibilities(comp);
   possibilities.push({{}, s});
   for (;;) {
     //drop_all_but_n(possibilities,5);
     DBG("-- have " << possibilities.size() << " options\n");
-  nxt:
     auto current = possibilities.top();
     possibilities.pop();
-    // Something with priority_queue gets slow with lots of elements,
-    // trim or take best guess rather than continue exploring if safe.
-    // TODO: This is a band-aid instead of writing =priority_stack=.
-    if(possibilities.size()>5 or current.first.size()>3)
-      if(a_star_distance(current.second.Body(),current.second.Body().front(),current.second.Body().back()))
-	return current.first;
-      else
-	goto nxt;
     DBG("-- Top has " << current.first.size() << " steps\n");
     DBG("-- Top has " << metric_distance(current.second) << " to go\n");
     for (auto dir :
@@ -311,7 +302,7 @@ Path Astar(Snek s) {
       ss.move(dir);
       if (ss.Alive()){
 	auto p = current.first;
-        p.push(dir);
+	p.push(dir);
         if (ss.Body()[0] == food and a_star_distance(ss.Body(),food,ss.Body().back())) {
 	 DBG("--- found\n");
        	  CLEAR();
@@ -320,7 +311,8 @@ Path Astar(Snek s) {
 	DBG("--- consideration\n");
 	contention[ss.Body()[0]]++;
 	DBG2(ss.Body()[0]);
-	possibilities.push({p, ss});
+	if(a_star_distance(ss.Body(),ss.Body().front(),ss.Body().back()))
+	  possibilities.push({p, ss});
       }else
 	DBG("--- non-consider\n");
     }
