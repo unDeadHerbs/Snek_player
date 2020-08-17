@@ -184,8 +184,11 @@ int snek_aware_distance(Snek const & game,Point goal){
     DBG3(pnt);
     if(auto intersect=std::find(walls.begin()+1,walls.end(),pnt);intersect!=walls.end()){
       CLEAR3();
-      auto wait_dist=std::min(std::distance(intersect,walls.end()),
-			      std::distance(intersect,walls.begin()));
+      auto tail_dist=std::distance(intersect,walls.end());
+      //auto head_dist=std::distance(walls.begin(),intersect);
+      auto wait_dist=tail_dist;
+      //if(head_dist>3)
+      //wait_dist=std::min(tail_dist,head_dist);
       linear_dist+=wait_dist;
       break;
     }
@@ -209,8 +212,11 @@ int snek_aware_distance(Snek const & game,Point goal){
     DBG3(pnt);
     if(auto intersect=std::find(walls.begin()+1,walls.end(),pnt);intersect!=walls.end()){
       CLEAR3();
-      auto wait_dist=std::min(std::distance(intersect,walls.end()),
-			      std::distance(intersect,walls.begin()));
+      auto tail_dist=std::distance(intersect,walls.end());
+      //auto head_dist=std::distance(walls.begin(),intersect);
+      auto wait_dist=tail_dist;
+      //if(head_dist>3)
+      //wait_dist=std::min(tail_dist,head_dist);
       x_first_dist+=wait_dist;
       break;
     }
@@ -232,8 +238,11 @@ int snek_aware_distance(Snek const & game,Point goal){
     DBG3(pnt);
     if(auto intersect=std::find(walls.begin()+1,walls.end(),pnt);intersect!=walls.end()){
       CLEAR3();
-      auto wait_dist=std::min(std::distance(intersect,walls.end()),
-			      std::distance(intersect,walls.begin()));
+      auto tail_dist=std::distance(intersect,walls.end());
+      //auto head_dist=std::distance(walls.begin(),intersect);
+      auto wait_dist=tail_dist;
+      //if(head_dist>3)
+      //wait_dist=std::min(tail_dist,head_dist);
       y_first_dist+=wait_dist;
       break;
     }
@@ -294,12 +303,14 @@ Path AI(Snek const & game){
   CLEAR();
   auto metric=[=](Consideration con)->int{
 		auto b=con.game.Body();
-		int distance_guess=10*(snek_aware_distance(con.game,goal)+con.path.size());
-		int prefer_less_turns=5*count_turns(con.path);
-		int when_lost_find_tail=(snek_aware_distance(con.game,b.back())
+		int distance_guess=100*(snek_aware_distance(con.game,goal)+con.path.size());
+		int prefer_less_turns=10*count_turns(con.path)+b[0].first!=goal.first+b[0].second!=goal.second;
+		int when_lost_find_tail=-1*(snek_aware_distance(con.game,b.back())
 					 +distance(b[0],b.back(),1));
-		int prefer_developed_paths=5*snek_aware_distance(con.game,goal); // dis-prefer undeveloped
-		int escape_head=-100*(con.path.size()<5);
+		int prefer_developed_paths=15*snek_aware_distance(con.game,goal); // dis-prefer undeveloped
+		int escape_head=-200*(con.path.size()<3);
+		// Some mild ordering on equivalent paths to prevent faffing
+		// Follow walls more
 		return
 		  distance_guess+prefer_less_turns+when_lost_find_tail+prefer_developed_paths + escape_head;
 	      };
