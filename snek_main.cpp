@@ -261,6 +261,18 @@ int snek_aware_distance(Snek const & game,Point goal){
   return std::min(std::min(x_first_dist,y_first_dist),linear_dist);
 }
 
+int wall_count(Snek const & game){
+  int c=0;
+  for (auto dir :
+	 {Direction::up, Direction::right, Direction::down, Direction::left}){
+    auto g=game;
+    g.move(dir);
+    if(!g.Alive())
+      c++;
+  }
+  return c;
+}
+
 template<typename T,typename VAL,bool GREATER=true>
 class priority_stack{
   // TODO: assert that GT is int(*)(T);
@@ -303,16 +315,17 @@ Path AI(Snek const & game){
   CLEAR();
   auto metric=[=](Consideration con)->int{
 		auto b=con.game.Body();
-		int distance_guess=100*(snek_aware_distance(con.game,goal)+con.path.size());
-		int prefer_less_turns=10*count_turns(con.path)+b[0].first!=goal.first+b[0].second!=goal.second;
-		int when_lost_find_tail=-1*(snek_aware_distance(con.game,b.back())
-					 +distance(b[0],b.back(),1));
-		int prefer_developed_paths=15*snek_aware_distance(con.game,goal); // dis-prefer undeveloped
-		int escape_head=-200*(con.path.size()<3);
-		// Some mild ordering on equivalent paths to prevent faffing
-		// Follow walls more
+		int escape_head            = -300*(con.path.size()<3);
+		int distance_guess         =   40*(snek_aware_distance(con.game,goal)+con.path.size());
+		int follow_walls           =   30*wall_count(con.game);
+		int prefer_developed_paths =   15*snek_aware_distance(con.game,goal); // dis-prefer undeveloped
+		int prefer_lots_of_turns   =  -30*(count_turns(con.path)*(count_turns(con.path)>5));
+		int prefer_less_turns      =   10*(count_turns(con.path)
+						   +b[0].first!=goal.first+b[0].second!=goal.second);
+		int when_lost_find_tail    =   -1*(snek_aware_distance(con.game,b.back())
+						   +distance(b[0],b.back(),1));
 		return
-		  distance_guess+prefer_less_turns+when_lost_find_tail+prefer_developed_paths + escape_head;
+		  distance_guess+prefer_less_turns+when_lost_find_tail+prefer_developed_paths + escape_head+follow_walls+prefer_lots_of_turns;
 	      };
   priority_stack<Consideration,decltype(metric),false> possibilities(metric);
   possibilities.push({{},game});
