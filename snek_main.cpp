@@ -38,6 +38,7 @@ std::queue<Point> dots;
     while (dots.size()) {                                                      \
       auto d = dots.front();                                                   \
       dots.pop();                                                              \
+      if(udh::cio[d.first][d.second] == '.')				\
       udh::cio[d.first][d.second] = ' ';                                       \
       udh::cio << std::flush;                                                  \
     }									\
@@ -71,7 +72,8 @@ std::queue<Point> dots3;
     while (dots3.size()) {						\
       auto d = dots3.front();						\
       dots3.pop();							\
-      udh::cio[d.first][d.second] = ' ';				\
+      if(udh::cio[d.first][d.second] == '_')\
+	udh::cio[d.first][d.second] = ' ';				\
       udh::cio << std::flush;						\
     }									\
   } while (0)
@@ -209,7 +211,7 @@ int count_turns(std::queue<Direction> v) {
 }
 
 std::map<Point,int> contention;
-int consideration_metric(Consideration const & val,Point food,int & seek_distance){
+int consideration_metric(Consideration const & val,Point food,int /*&*/ seek_distance){
   // TODO: This has become very expensive and should be memoized
 
   // A memoizer is a band-aid, the queue shouldn't be re-evaluating
@@ -239,19 +241,21 @@ int consideration_metric(Consideration const & val,Point food,int & seek_distanc
 
   auto turns=count_turns(val.first);
 
-  auto heuristic_distance = md*(1+(md>5)*4);
+  auto heuristic_distance = md*(1+(md>5)*4); // Consider decreasing this distance very important 4
   auto current_distance = val.first.size();
   //return md+current_distance;
   auto quick_explore = val.first.size()<5;
-  auto to_many_turns = (1+turns>1+(turns>3)*turns*(1+(turns>5)*turns)*(1+(turns>7)*turns));
-  auto is_close = (md<3) && (contention[val.second.Body()[0]]<3);
-  auto contentiousness = pow(contention[val.second.Body()[0]],2);
+  //auto to_many_turns = (1+turns>1+(turns>3)*turns*(1+(turns>5)*turns)*(1+(turns>7)*turns));
+  auto to_many_turns = turns;
+  auto is_close = (md<3);// && (contention[val.second.Body()[0]]<3);
+  //auto contentiousness = pow(contention[val.second.Body()[0]],2);
 
   auto distance_cost=heuristic_distance+current_distance;
   //return distance_cost;
-  auto dislikability=to_many_turns+(1+!quick_explore)+contentiousness+(1+!is_close);
+  //auto dislikability=to_many_turns+(1+!quick_explore)+(1+!is_close);//+contentiousness;
+  auto dislikability=to_many_turns;
 
-  return distance_cost*dislikability;
+  return distance_cost+dislikability;
 }
 
 template<typename T,typename U,typename V>
@@ -272,6 +276,7 @@ void drop_all_but_n(std::priority_queue<T,U,V>& q,int count){
 }
 
 Path Astar(Snek s) {
+  CLEAR();
   // TODO: This function slows down dramatically as more currently active paths are added.
   contention.clear();
   DBG("- In Astar\n");
@@ -298,7 +303,7 @@ Path Astar(Snek s) {
       possibilities.push({{}, s});
       start_dist=tail_dist;
       target=s.Body().back();
-      CLEAR();
+      //CLEAR();
     }
     //drop_all_but_n(possibilities,5);
     DBG("-- have " << possibilities.size() << " options\n");
@@ -315,7 +320,7 @@ Path Astar(Snek s) {
 	p.push(dir);
 	if (ss.Body()[0] == target and a_star_distance(ss.Body(),target,ss.Body().back())) {
 	  DBG("--- found\n");
-       	  CLEAR();
+	  //CLEAR();
 	  return p;
 	}
 	DBG("--- consideration\n");
