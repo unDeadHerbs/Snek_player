@@ -73,7 +73,7 @@
   other free (or likely to be free) square in the metric for getting
   to the apple, doable but slow.
 ** Transcribe Audio Log Here
-** 09848 
+** 09848
    The A* algorithm works by having a fast good-ish metric for how far
    away the goal is and then using that to prioritize paths.  The
    metric I wrote there works by doing the same thing, wrapped around
@@ -96,3 +96,35 @@
    give an estimate of how far away the correct path is (since the
    wait time is also, at worst, half the distance to go around the
    tail).
+** 09849
+   The two major things left I want to fix are: firstly, the reachable
+   flood fill is slow to check; and, secondly, reachable needs to be
+   extended to calculate the size and quantity of unreachable
+   regions.
+
+   This fist change is because =reachable= is checked on every
+   consideration step to keep the invariant I'm checking valid.  The
+   second is to add a metric that minimizes holes.  This should reduce
+   the average travel distance to placed apples and prevent lots of
+   small holes from forming in the end game.
+
+   I plan to improve this metric by firstly making a data structure
+   that better represents a Boolean matrix.  I will then implement a
+   more efficient flood fill over this structure.  Once the initial
+   fill is done the system will either return if the goal was found;
+   or, if the region count was requested, add the size of the region
+   to a list.  Then the system will find the next unfilled cell and
+   repeat until the sizes of every region is known.  This list will
+   then be sorted and returned.
+
+   I have two different plans for how to improve the flood fill. The
+   first is that if the snake body doesn't touch itself or the wall
+   then no regions can be formed, this is faster than trying to fill
+   the region in most cases.  The second is to break the major grid
+   into smaller sections, if a section is empty of body then it can be
+   filled as a single unit, if the body has no touching points in the
+   region then the region can be split into two separately fill-able
+   spaces, carrying that connectivity information to the adjacent
+   regions.  If the region has body touching then there are probably
+   optimizations that can be done, but that will be for later
+   investigation.
