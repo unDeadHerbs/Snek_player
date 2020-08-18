@@ -121,9 +121,9 @@ bool reachable_flood(std::vector<Point> walls,Point from, Point to,Point border)
   if(from==to)return true;
   std::queue<Point> to_consider{{from}};
   while(!to_consider.empty()){
-    DBG("--- progress "<<to_consider.size()<<"/"<<walls.size()<<"/"<<border.first*border.second<<"\n");
+    // DBG("--- progress "<<to_consider.size()<<"/"<<walls.size()<<"/"<<border.first*border.second<<"\n");
     Point p=to_consider.front();
-    DBG("---- point=(" << p.first<<","<<p.second<<")\n");
+    // DBG("---- point=(" << p.first<<","<<p.second<<")\n");
     DBG3(p);
     to_consider.pop();
     for (auto dir :
@@ -134,18 +134,17 @@ bool reachable_flood(std::vector<Point> walls,Point from, Point to,Point border)
       if(std::find(walls.begin(),walls.end(),test)!=walls.end())
 	continue;
       if(test.first<=0 or test.second<=0 or test.first>border.first or test.second>border.second)
-	// Somehow it was skipping over the border?
 	continue;
       to_consider.push(test);
       walls.push_back(test);
     }
   }
-  DBG("--- Flood Fail\n");
+  // DBG("--- Flood Fail\n");
   return false;
 }
 
 bool reachable(std::vector<Point>const walls,Point from, Point to,Point boarder) {
-  DBG("--- reachable?\n");
+  //DBG("--- reachable?\n");
   return reachable_flood(walls,from,to,boarder);
   // TODO: This is still a pretty bad way of checking, much better
   // than A* though.  Make something that understands regions and the
@@ -268,13 +267,16 @@ int body_to_goal_dist(std::vector<Point> body,Point goal){
   return dist;
 }
 
-int wall_count(Snek const & game){
+int wall_count(std::vector<Point> const & walls,Point const pnt,Point const border){
   int c=0;
   for (auto dir :
 	 {Direction::up, Direction::right, Direction::down, Direction::left}){
-    auto g=game;
-    g.move(dir);
-    if(!g.Alive())
+    Point t=pnt+dir;
+    if(t.first<=0 or t.second<=0 or t.first>border.first or t.second>border.second){
+      c++;
+      continue;
+    }
+    if(std::find(walls.begin(),walls.end(),t)!=walls.end())
       c++;
   }
   return c;
@@ -349,7 +351,7 @@ Path AI(Snek const & game){
 			 // TODO: (-1)*size.first * size.second?
 			 if(!reachable(b,b[0],goal,con.game.Size()))
 			   // follow tail until better
-			   return -500+tail_dist-depth;
+			   return -500+tail_dist+depth*10/b.size();
 			 if(body_to_goal_dist(b,goal)<goal_dist)
 			   // follow tail
 			   return -500+tail_dist-depth;
@@ -358,7 +360,7 @@ Path AI(Snek const & game){
 								* !is_simple_path * (b.size()>goal_dist));
 			 int distance_guess           =   40 * (goal_dist+depth);
 			 int less_distance_if_wiggles =  -30 * goal_dist*(turns>10)*(turns<b.size()/4);
-			 int follow_walls             =   30 * wall_count(con.game);
+			 int follow_walls             =   30 * wall_count(b,b[0],con.game.Size());
 			 // TODO: Make follow_walls a property of the path not the head.
 			 // int avoid_small_bubbles   =   20 * bubble_count(con.game);
 			 int unprefer_undeveloped     =   15 * goal_dist;
@@ -433,14 +435,15 @@ Path AI(Snek const & game){
 	DBG("-- Short Cutting\n");
 	return trying.path;
       }
-    if(!possibilities.empty())
+    /*
+    else
     if(trying.path.size()>5+possibilities[0].path.size()
        and trying.path.size()>20){
       Path ret;
-      for(int p=0;p<20;p++)
+      for(int p=0;p<possibilities[0].path.size();p++)
 	ret.push_back(trying.path[p]);
       return ret;
-    }
+      }*/
 
     DBG("- considering point\n");
     DBG2(trying.game.Body()[0],'_');
@@ -448,22 +451,26 @@ Path AI(Snek const & game){
 	   {Direction::up, Direction::right, Direction::down, Direction::left}) {
       DBG("-- consider point "<<dir<<"\n");
       Snek t_game(trying.game);
+      Path p(trying.path);
       t_game.move(dir);
-      DBG("-- check valid point "<<dir<<"\n");
+      p.push_back(dir);
+      DBG("-- check alive point "<<dir<<"\n");
       if(!t_game.Alive())
 	continue;
+      DBG("-- check reachable point "<<dir<<"\n");
       if (!reachable(t_game.Body(),t_game.Body().front(),t_game.Body().back(),t_game.Size()))
 	continue;
-      Path p(trying.path);
-      p.push_back(dir);
-      DBG("-- check done point "<<dir<<"\n");
+      DBG("-- check not-closed in point "<<dir<<"\n");
       if(t_game.Body()[0]==food)
-	return p;
+	if(wall_count(t_game.Body(),food,t_game.Size())>2 and distance(food,t_game.Body().back(),1)<3)
+	  // If eating the food would (probably) cut us off, don't.
+	  continue;
+	else
+	  return p;
       DBG("-- Adding consider point "<<dir<<"\n");
       DBG2(t_game.Body()[0],'.');
       possibilities.push({p,t_game});
     }
-    DBG("- Adding considered point\n");    
     DBG2(trying.game.Body()[0],',');
   }
   DBG("No Path Found\n");
@@ -486,8 +493,12 @@ int main() {
       DBG("\n\nNext Food\n");
       p = AI(s);
       DBG("Moving\n");
+      DBG("Current fill = "<<s.Body().size()<<"/"<<s.Size().first*s.Size().second<< "\n");
     }
-    if(!p.size()) break;
+    if(!p.size()){
+      DBG("No Path\n");
+      break;
+    }
     s.move(p.front());
     p.erase(p.begin(),p.begin()+1); // pop front
     s.updateDisplay();
