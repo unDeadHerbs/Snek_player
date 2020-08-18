@@ -41,6 +41,7 @@ using udh::cio;
 
 Snek::Snek() {
   game_tick=0;
+  length=3; // starting length
   std::srand(std::time(nullptr));
   size = cio.size();
   size.first -= 2;
@@ -70,14 +71,11 @@ void Snek::drawWalls() const {
 }
 
 void Snek::updateDisplay() const {
-  static Point old_end;
-  if (old_end!=Point{0,0})
-    cio[old_end.first][old_end.second] = ' ';
   if (body.size() > 1){
     cio[body[1].first][body[1].second] =
         body_graphics[1]; // In case we haven't moved and need to not delete that.
     cio[body.back().first][body.back().second] =
-      body_graphics.back(); // In case we haven't moved and need to not delete that.
+      ' '; // Hidden, just to prevent walking on self.
   }
   if (alive)
     cio[body.front().first][body.front().second] = body_graphics.front();
@@ -85,11 +83,10 @@ void Snek::updateDisplay() const {
     cio[body.front().first][body.front().second] = '!';
 
   cio[food.first][food.second] = 'a'; // Draw food over body in case of glitch
-  old_end = body.back();
 
   // TODO: cio << position(0,0) << to_string(game_tick);
   int pos=0;
-  for(char c:std::to_string(game_tick))
+  for(char c:std::to_string(game_tick)+"/"+std::to_string(int(std::pow(size.first*size.second,2)))+"---"+std::to_string(body.size())+"/"+std::to_string(size.first*size.second))
     cio[0][pos++]=c;
   cio << std::flush;
   usleep(sleep_time);
@@ -176,27 +173,21 @@ bool Snek::move(Direction movement_input) {
       }
     break;
   }
+  if (body[0] == food){
+    while (std::find(body.begin(), body.end(), food) !=
+	   body.end()) // Generate a new food.
+      food = rand_point({1, 1}, {size.first - 1, size.second - 1});
+    length+=1; // Amount grown by each food.
+  }
+  while(body.size()>length){
+    body.pop_back(); // Don't get longer by one.
+    body_graphics.pop_back();
+  }
   if (body[0].first == 0 || body[0].first == size.first + 1 ||
       body[0].second == 0 || body[0].second == size.second + 1)
     alive = false;
   if (std::find(body.begin() + 1, body.end(), body[0]) !=
       body.end()) // If the new head is in the body, die.
     alive = false;
-  if (body[0] == food){
-    while (std::find(body.begin(), body.end(), food) !=
-           body.end()) { // Generate a new food.
-      food = rand_point({1, 1}, {size.first - 1, size.second - 1});
-      /*food.first++; // TODO: random, this is just lexicographic
-      food.second+=food.first==size.first;
-      food.first%=size.first;
-      food.second%=size.second;
-      if(food.first==0)food.first++;
-      if(food.second==0)food.second++;*/
-    }
-  }
-  else{
-    body.pop_back(); // Don't get longer by one.
-    body_graphics.pop_back();
-  }
   return true;
 }

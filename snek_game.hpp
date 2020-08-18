@@ -8,6 +8,7 @@ typedef std::pair<uint, uint> Point;
 int distance(Point, Point, int);
 class Snek {
   Point size;
+  int length;
   std::vector<Point> body; // [0] is head
   std::vector<wchar_t> body_graphics; // [0] is head
   Point food;
