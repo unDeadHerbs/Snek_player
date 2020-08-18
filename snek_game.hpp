@@ -4,6 +4,8 @@
 #include <utility>
 #include <vector>
 
+#include "Console-IO/ioconsole.hpp"
+
 typedef std::pair<uint, uint> Point;
 int distance(Point, Point, int);
 class Snek {
@@ -28,11 +30,11 @@ private:
   bool alive;
 
 public: // Not sure about this
-  void drawWalls() const;
-  void updateDisplay() const;
+  void drawWalls(decltype(udh::cio)) const;
+  void updateDisplay(decltype(udh::cio)) const;
 
 public:
-  Snek();
+  Snek(Point);
   bool Alive() const { return alive; }
   bool move(Direction movement = none);
 };

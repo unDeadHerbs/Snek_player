@@ -482,9 +482,10 @@ int main() {
   log_file = std::ofstream("trying.log", std::ios::out | std::ios::trunc);
 #endif
   DBG("Starting\n");
-  Snek s;
-  s.drawWalls();
-  s.updateDisplay();
+  // Snek s(udh::cio.size());
+  Snek s({5, 20});
+  s.drawWalls(udh::cio);
+  s.updateDisplay(udh::cio);
   DBG("Call to AI\n");
   auto p = AI(s);
   DBG("Got a path of length " << p.size() << "\n");
@@ -501,7 +502,7 @@ int main() {
     }
     s.move(p.front());
     p.erase(p.begin(),p.begin()+1); // pop front
-    s.updateDisplay();
+    s.updateDisplay(udh::cio);
   }
   // TODO: Wait
   return 0;
