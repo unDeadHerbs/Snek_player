@@ -143,11 +143,7 @@ bool reachable_flood(std::vector<Point> walls,Point from, Point to,Point border)
 }
 
 bool reachable(std::vector<Point>const walls,Point from, Point to,Point boarder) {
-  //DBG("--- reachable?\n");
   return reachable_flood(walls,from,to,boarder);
-  // TODO: This is still a pretty bad way of checking, much better
-  // than A* though.  Make something that understands regions and the
-  // single internal "wall" nature of the map.
 }
 
 int count_turns(Path v) {
@@ -180,12 +176,7 @@ int snek_aware_distance(Snek const & game,Point goal){
     DBG3(pnt);
     if(auto intersect=std::find(walls.begin()+1,walls.end(),pnt);intersect!=walls.end()){
       CLEAR3();
-      auto tail_dist=std::distance(intersect,walls.end());
-      //auto head_dist=std::distance(walls.begin(),intersect);
-      auto wait_dist=tail_dist;
-      //if(head_dist>3)
-      //wait_dist=std::min(tail_dist,head_dist);
-      linear_dist+=wait_dist;
+      linear_dist+=std::distance(intersect,walls.end());
       break;
     }
     xdist=std::abs(int(pnt.first)-int(goal.first));
@@ -208,12 +199,7 @@ int snek_aware_distance(Snek const & game,Point goal){
     DBG3(pnt);
     if(auto intersect=std::find(walls.begin()+1,walls.end(),pnt);intersect!=walls.end()){
       CLEAR3();
-      auto tail_dist=std::distance(intersect,walls.end());
-      //auto head_dist=std::distance(walls.begin(),intersect);
-      auto wait_dist=tail_dist;
-      //if(head_dist>3)
-      //wait_dist=std::min(tail_dist,head_dist);
-      x_first_dist+=wait_dist;
+      x_first_dist+=std::distance(intersect,walls.end());
       break;
     }
     if(pnt.first!=goal.first)
@@ -234,12 +220,7 @@ int snek_aware_distance(Snek const & game,Point goal){
     DBG3(pnt);
     if(auto intersect=std::find(walls.begin()+1,walls.end(),pnt);intersect!=walls.end()){
       CLEAR3();
-      auto tail_dist=std::distance(intersect,walls.end());
-      //auto head_dist=std::distance(walls.begin(),intersect);
-      auto wait_dist=tail_dist;
-      //if(head_dist>3)
-      //wait_dist=std::min(tail_dist,head_dist);
-      y_first_dist+=wait_dist;
+      y_first_dist+=std::distance(intersect,walls.end());
       break;
     }
     if(pnt.second==goal.second)
@@ -253,7 +234,6 @@ int snek_aware_distance(Snek const & game,Point goal){
       else
 	pnt+=Direction::down;
   }
-  // TODO: add waiting time
   return std::min(std::min(x_first_dist,y_first_dist),linear_dist);
 }
 
@@ -325,7 +305,6 @@ struct Consideration{
 };
 
 Path AI(Snek const & game){
-  //auto init_back=game.Body().back();
   auto food=game.Food();
   CLEAR();
   auto metric=[](Point goal){
@@ -377,71 +356,13 @@ Path AI(Snek const & game){
 	      };
   priority_stack<Consideration,decltype(metric(food)),false> possibilities(metric(food));
   possibilities.push({{},game});
-#if 0
-  priority_stack<Consideration,decltype(metric(init_back)),false> possibilities_tail(metric(init_back));
-  possibilities_tail.push({{},game});
-  DBG("-- Seed with path to tail\n");
-  while(!possibilities_tail.empty()){
-    auto trying=possibilities_tail.pop();
-    DBG2(trying.game.Body()[0],'_');
-    for (auto dir :
-	   {Direction::up, Direction::right, Direction::down, Direction::left}) {
-      DBG("-- consider point "<<dir<<"\n");
-      Snek t_game(trying.game);
-      t_game.move(dir);
-      DBG("-- check valid point "<<dir<<"\n");
-      if(!t_game.Alive())
-	continue;
-      if (!reachable(t_game.Body(),t_game.Body().front(),t_game.Body().back(),t_game.Size()))
-	continue;
-      Path p(trying.path);
-      p.push_back(dir);
-      DBG("-- check done point "<<dir<<"\n");
-      if(t_game.Body()[0]==food)
-	return p; // Just in case.
-      if(t_game.Body()[0]==init_back)
-	goto search;
-      DBG("-- Adding consider point "<<dir<<"\n");
-      DBG2(t_game.Body()[0],'.');
-      possibilities.push({p,t_game});
-      possibilities_tail.push({p,t_game});
-    }
-    DBG("- Adding considered point\n");
-    DBG2(trying.game.Body()[0],',');
-  }
- search:
-  DBG("-- Starting search Proper\n");
-#endif
   while(!possibilities.empty()){
-    /*
-    // If top 20 ideas all have the same start, use that.
-    Path init_check(possibilities[0].path);
-    if(possibilities.size()>20){
-      for(int dep=0;dep<20
-		     and !init_check.empty();++dep)
-	init_check=shared_front(init_check,
-				possibilities[dep].path);
-      if(!init_check.empty())
-	;//return init_check;
-    }
-    */
-
     auto trying=possibilities.pop();
     if(possibilities.empty())
       if(trying.path.size()){ // since all must descend from this, lets advance the board
 	DBG("-- Short Cutting\n");
 	return trying.path;
       }
-    /*
-    else
-    if(trying.path.size()>5+possibilities[0].path.size()
-       and trying.path.size()>20){
-      Path ret;
-      for(int p=0;p<possibilities[0].path.size();p++)
-	ret.push_back(trying.path[p]);
-      return ret;
-      }*/
-
     DBG("- considering point\n");
     DBG2(trying.game.Body()[0],'_');
     for (auto dir :
