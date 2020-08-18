@@ -128,3 +128,20 @@
    regions.  If the region has body touching then there are probably
    optimizations that can be done, but that will be for later
    investigation.
+** 09849
+   Improving the express-ability and test-ability of metrics should be
+   soon on the improvements.  An AI in the system I've been developing
+   has three portions.  Firstly, if it's using BFS or DFS, this is
+   mostly just a feature of =priority_stack= vs =priority_queue=; but,
+   this has wide implications as to how the metric shapes the search.
+   Secondly, the metric.  The metric should be passed in as a lambda.
+   The metrics I've been making are of a fairly simple form, detect
+   what case we are in, and chose a weighting based on that case.
+   Thirdly is the cutting system.  This is technically not needed but
+   makes the search significantly faster and is a simple method of
+   expressing invariants than the metric is.
+
+   As a side note; that describes a system of building AIs that is
+   fundamentally bad exploring whole path based goals, such as the one
+   described in the audio log, since it can't make variations on
+   existing paths, it must instead discover the altered path.
