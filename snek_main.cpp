@@ -1,6 +1,7 @@
 #include "snek_game.hpp"
 #include "snek_ai.hpp"
-#include "Console-IO/ioconsole.hpp"
+
+#define VISUAL 1
 
 #define DEBUG1 0
 #if DEBUG1
@@ -15,6 +16,9 @@ std::ofstream log_file;
   do {									\
   } while (0)
 #endif
+
+#if VISUAL
+#include "Console-IO/ioconsole.hpp"
 
 void visual_simulator() {
 #if DEBUG1
@@ -43,6 +47,8 @@ void visual_simulator() {
     s.updateDisplay(udh::cio);
   }
 }
+
+#else
 
 enum Termination {Success,Crash,Death,Giveup};
 
@@ -92,8 +98,13 @@ void size_simulator(Point max_size){
         }
 }
 
+#endif
+
 int main(){
+#if VISUAL
   visual_simulator();
-  //size_simulator({7,7});
+#else
+  size_simulator({7,7});
+#endif
   return 0;
 }
