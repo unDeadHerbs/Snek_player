@@ -22,7 +22,7 @@ std::ofstream log_file;
   } while (0)
 #endif
 
-#define DEBUG2 1
+#define DEBUG2 0
 #if DEBUG2
 #include "Console-IO/ioconsole.hpp"
 std::queue<Point> dots;
@@ -113,6 +113,29 @@ Point operator+(Point const pnt, Direction const dir){
 }
 Point& operator+=(Point & pnt, Direction const dir){
   return pnt=pnt+dir;
+}
+
+int unreachable_count(std::vector<Point> walls,Point from,Point border){
+  CLEAR3();
+  std::queue<Point> to_consider{{from}};
+  while(!to_consider.empty()){
+    // DBG("--- progress "<<to_consider.size()<<"/"<<walls.size()<<"/"<<border.first*border.second<<"\n");
+    Point p=to_consider.front();
+    // DBG("---- point=(" << p.first<<","<<p.second<<")\n");
+    DBG3(p);
+    to_consider.pop();
+    for (auto dir :
+	   {Direction::up, Direction::right, Direction::down, Direction::left}){
+      auto test=p+dir;
+      if(std::find(walls.begin(),walls.end(),test)!=walls.end())
+	continue;
+      if(test.first<=0 or test.second<=0 or test.first>border.first or test.second>border.second)
+	continue;
+      to_consider.push(test);
+      walls.push_back(test);
+    }
+  }
+  return border.first*border.second - walls.size();
 }
 
 bool reachable_flood(std::vector<Point> walls,Point from, Point to,Point border){
@@ -312,46 +335,13 @@ Path AI(Snek const & game){
 			 auto b=con.game.Body();
 			 auto turns=count_turns(con.path);
 			 auto goal_dist=snek_aware_distance(con.game,goal);
-			 auto goal_lin_dist=distance(b[0],goal,1);
-			 auto tail_dist=snek_aware_distance(con.game,b.back());
-			 auto tail_lin_dist=distance(b[0],b.back(),1);
 			 auto depth=con.path.size();
-			 auto is_simple_path=(goal_dist==goal_lin_dist);
 
 			 if(depth<3)
 			   // escape the head
-			   return -200000+depth;
-			 if(is_simple_path)
-			   // take simple path with small preference to developed paths
-			   return -100000+10.1*goal_dist+10*depth;
-			 // TODO: (-1)*size.first * size.second?
-			 if(!reachable(b,b[0],goal,con.game.Size()))
-			   // follow tail until better
-			   return -500+tail_dist+depth*10/b.size();
-			 if(body_to_goal_dist(b,goal)<goal_dist)
-			   // follow tail
-			   return -500+tail_dist-depth;
-
-			 int follow_tail_if_near      =  -80 * ((tail_dist<5)
-								* !is_simple_path * (b.size()>goal_dist));
-			 int distance_guess           =   40 * (goal_dist+depth);
-			 int less_distance_if_wiggles =  -30 * goal_dist*(turns>10)*(turns<b.size()/4);
-			 int follow_walls             =   30 * wall_count(b,b[0],con.game.Size());
-			 // TODO: Make follow_walls a property of the path not the head.
-			 // int avoid_small_bubbles   =   20 * bubble_count(con.game);
-			 int unprefer_undeveloped     =   15 * goal_dist;
-			 int prefer_developed_paths   =  -10 * depth;
-			 int prefer_lots_of_turns     =  -15 * turns*(turns>5);
-			 int prefer_less_turns        =   10 * (turns/(depth/20+1)
-								+b[0].first!=goal.first+b[0].second!=goal.second);
-			 int when_lost_find_tail      =   -1 * (tail_lin_dist+tail_dist);
-			 int developed_simple_path    =    1 * goal_dist * (goal_dist==goal_lin_dist);
-
-			 return
-			   distance_guess+prefer_less_turns+when_lost_find_tail
-			   +prefer_developed_paths +follow_walls+prefer_lots_of_turns
-			   +less_distance_if_wiggles+follow_tail_if_near+unprefer_undeveloped
-			   +developed_simple_path;
+			   return -200000;
+			 // just A* for a moment
+			 return 101*goal_dist+100*depth+105*turns;
 		       };
 	      };
   priority_stack<Consideration,decltype(metric(food)),false> possibilities(metric(food));
@@ -376,6 +366,41 @@ Path AI(Snek const & game){
       if(!t_game.Alive())
 	continue;
       DBG("-- check reachable point "<<dir<<"\n");
+      if(true){//if(t_game.Body()[0]==food){
+	// Two moves required to prevent cutting at food (where
+	// everywhere is reachable but no move keeps that so).
+	bool safe_dir=false;
+	for (auto test_dir :
+	       {Direction::up, Direction::right,
+		  Direction::down, Direction::left})
+	  for (auto test_dir2 :
+		 {Direction::up, Direction::right,
+		    Direction::down, Direction::left}){
+	    Snek b_game(t_game);
+	    b_game.move(test_dir);
+	    if(b_game.Alive())
+	      if(0==unreachable_count(b_game.Body(),
+				      b_game.Body().front(),
+				      b_game.Size())){
+		b_game.move(test_dir2);
+		if(b_game.Alive())
+		  if(0==unreachable_count(b_game.Body(),
+					  b_game.Body().front(),
+					  b_game.Size())){
+		    safe_dir=true;
+		    break;
+		  }
+	      }
+	    if(safe_dir)
+	      break;
+	  }
+	if(!safe_dir)
+	  continue;
+      }
+
+      if(t_game.Body()[0]==food)
+	return p;
+      /*
       if (!reachable(t_game.Body(),t_game.Body().front(),t_game.Body().back(),t_game.Size()))
 	continue;
       DBG("-- check not-closed in point "<<dir<<"\n");
@@ -385,6 +410,7 @@ Path AI(Snek const & game){
 	  continue;
 	else
 	  return p;
+      */
       DBG("-- Adding consider point "<<dir<<"\n");
       DBG2(t_game.Body()[0],'.');
       possibilities.push({p,t_game});
