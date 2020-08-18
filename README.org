@@ -1,4 +1,5 @@
-* Copied form Journal
+* Notes
+** 09846
   In [[https://www.youtube.com/watch?v=TOpBcfbAgPg][How to Win Snake: The UNKILLABLE Snake AI]] AlphaPhoenix is
   responding to [[https://www.youtube.com/watch?v=tjQIO1rqTBE][I Created a PERFECT SNAKE A.I.]] by Code Bullet.
 
