@@ -377,16 +377,20 @@ Path AI(Snek const & game){
 		 {Direction::up, Direction::right,
 		    Direction::down, Direction::left}){
 	    Snek b_game(t_game);
+	    auto length=b_game.Body().size();
+	    auto volume=b_game.Size().first*b_game.Size().second;
 	    b_game.move(test_dir);
 	    if(b_game.Alive())
-	      if(0==unreachable_count(b_game.Body(),
-				      b_game.Body().front(),
-				      b_game.Size())){
+	      if(length
+		 <=volume-unreachable_count(b_game.Body(),
+					    b_game.Body().front(),
+					    b_game.Size())){
 		b_game.move(test_dir2);
 		if(b_game.Alive())
-		  if(0==unreachable_count(b_game.Body(),
-					  b_game.Body().front(),
-					  b_game.Size())){
+		  if(length
+		     <=volume-unreachable_count(b_game.Body(),
+						b_game.Body().front(),
+						b_game.Size())){
 		    safe_dir=true;
 		    break;
 		  }
