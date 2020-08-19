@@ -6,41 +6,36 @@
 #include <ctime>
 #include <unistd.h>
 
-#define BOX_CHAR 0
-
 // Point functions
 
-int distance(Point L, Point R, int metric) {
+int distance(Point const L, Point const R, int const metric) {
+  auto const x_delta=abs(int(L.first) - int(R.first));
+  auto const y_delta=abs(int(L.second) - int(R.second));
   if (metric == 1)
-    return abs(int(L.first) - int(R.first)) +
-           abs(int(L.second) - int(R.second));
+    return  x_delta+y_delta;
   if (metric == 2)
-    return std::max<int>(
-        abs(int(std::sqrt(abs(int(L.first) - int(R.first)) *
-                              abs(int(L.first) - int(R.first)) +
-                          abs(int(L.second) - int(R.second)) *
-                              abs(int(L.second) - int(R.second))))),
-        1);
+    return abs(int(std::sqrt(x_delta * x_delta +
+			     y_delta * y_delta)));
   return std::max<int>(
       abs(int(std::pow(std::pow(abs(int(L.first) - int(R.first)), metric) +
                            std::pow(abs(int(L.second) - int(R.second)), metric),
                        1. / metric))),
-      1);
+      0);
 }
 
 // Snek Functions
 
 Point rand_point(Point min, Point max) {
   return {
-      std::rand() % (max.first - min.first + 1) + min.first,
-      std::rand() % (max.second - min.second + 1) + min.second,
+	  std::rand() % int(max.first - min.first + 1) + int(min.first),
+	  std::rand() % int(max.second - min.second + 1) + int(min.second)
   };
 }
 
 Snek::Snek(Point siz) : size(siz) {
   game_tick = 0;
   length = 3; // starting length
-  std::srand(std::time(nullptr));
+  std::srand(uint(std::time(nullptr)));
   size.first -= 2;
   size.second -= 2;
   body.push_back({size.first / 2, size.second / 2});
@@ -83,7 +78,7 @@ void Snek::updateDisplay(decltype(udh::cio) o) const {
   o[food.first][food.second] = 'a'; // Draw food over body in case of glitch
 
   // TODO: cio << position(0,0) << to_string(game_tick);
-  int pos = 0;
+  uint pos = 0;
   for (char c : std::to_string(game_tick) + "/" +
                     std::to_string(int(std::pow(size.first * size.second, 2))) +
                     "---" + std::to_string(body.size()) + "/" +

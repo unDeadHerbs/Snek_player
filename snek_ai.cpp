@@ -22,10 +22,14 @@ std::ofstream log_file;
   } while (0)
 #endif
 
-#define DEBUG2 0
+#define DEBUG2 1
 #if DEBUG2
 #include "Console-IO/ioconsole.hpp"
-std::queue<Point> dots;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wexit-time-destructors"
+#pragma clang diagnostic ignored "-Wglobal-constructors"
+static std::queue<Point> dots;
+#pragma clang diagnostic pop
 #define DBG2(X,SYM)							\
   do {                                                                         \
   if (udh::cio[(X).first][(X).second] == ' '				\
@@ -135,7 +139,7 @@ int unreachable_count(std::vector<Point> walls,Point from,Point border){
       walls.push_back(test);
     }
   }
-  return border.first*border.second - walls.size();
+  return int(border.first*border.second) - int(walls.size());// TODO
 }
 
 bool reachable_flood(std::vector<Point> walls,Point from, Point to,Point border){
@@ -169,31 +173,39 @@ bool reachable(std::vector<Point>const walls,Point from, Point to,Point boarder)
   return reachable_flood(walls,from,to,boarder);
 }
 
-int count_turns(Path v) {
+int count_turns(Path path) {
   auto c = 0;
-  if(v.empty())return 0;
-  Direction ld = v.front();
-  while (v.size()) {
-    auto d = v.front();
-    v.erase(v.begin(),v.begin()+1);//pop();
-    if (ld != d) {
-      ld = d;
+  if(path.empty())return 0;
+  Direction last_dir = path.front();
+  for(auto step:path)
+    if(step!=last_dir)
+      c++,last_dir=step;
+  return c;
+}
+
+int count_wiggles(Path path) {
+  int c = 0;
+  if(path.empty())return 0;
+  Direction last_dir = path.front();
+  Direction l2_dir = path.front();
+  for(auto dir:path){
+    if(dir!=last_dir and last_dir!=l2_dir)
       c++;
-    }
+    l2_dir=last_dir;
+    last_dir=dir;
   }
   return c;
 }
 
 int snek_aware_distance(Snek const & game,Point goal){
-  auto walls=game.Body();
-  auto pnt=walls[0];
+  auto const walls=game.Body();
+  Point pnt=walls[0];
   auto xdist=std::abs(int(pnt.first)-int(goal.first));
   auto ydist=std::abs(int(pnt.second)-int(goal.second));
-  int basic_dist=xdist+ydist;
-  if(walls.size()==1)
+  int const basic_dist=xdist+ydist;
+  if(walls.size()<=3)
     return basic_dist;
 
-  pnt=walls[0];
   int linear_dist=basic_dist;
   while(pnt!=goal){
     DBG3(pnt);
@@ -261,7 +273,7 @@ int snek_aware_distance(Snek const & game,Point goal){
 }
 
 int body_to_goal_dist(std::vector<Point> body,Point goal){
-  int dist=distance(body[0],goal,1);
+  auto dist=distance(body[0],goal,1);
   for(auto segment:body)
     dist=std::min(dist,distance(segment,goal,1));
   return dist;
@@ -282,7 +294,7 @@ int wall_count(std::vector<Point> const & walls,Point const pnt,Point const bord
   return c;
 }
 
-template<typename T,typename VAL,bool GREATER=true>
+template<typename T,typename VAL,bool GREATER=true,bool QUEUE=false>
 class priority_stack{
   // TODO: assert that GT is int(*)(T);
   VAL val;
@@ -296,9 +308,20 @@ public:
       list.push_front({elm,v});
       return;
     }
+    auto comp=[=](int lhs,int rhs){
+		if(QUEUE)
+		  if(GREATER)
+		    return lhs>=rhs;
+		  else
+		    return lhs<=rhs;
+		else
+		  if(GREATER)
+		    return lhs>rhs;
+		  else
+		    return lhs<rhs;
+	      };
     auto ptr=list.begin();
-    if((!GREATER and v<ptr->second) or
-       (GREATER and v>ptr->second)){
+    if(comp(v,ptr->second)){
       list.push_front({elm,v});
       return;
     }
@@ -334,17 +357,25 @@ Path AI(Snek const & game){
 		return [=](Consideration con)->int{
 			 auto b=con.game.Body();
 			 auto turns=count_turns(con.path);
-			 auto goal_dist=snek_aware_distance(con.game,goal);
-			 auto depth=con.path.size();
+			 auto wiggles=count_wiggles(con.path);
+			 //auto goal_dist=snek_aware_distance(con.game,goal);
+			 auto goal_dist=distance(b[0],goal,1);
+			 auto depth=int(con.path.size());
+			 auto unreachable=unreachable_count(b,b[0],
+							    con.game.Size());
 
 			 if(depth<3)
 			   // escape the head
-			   return -200000;
-			 // just A* for a moment
-			 return 101*goal_dist+100*depth+105*turns;
+			   return -1;
+			 // A* with a small weighting
+			 return
+			   goal_dist
+			   +10*(goal_dist+depth)
+			   +wiggles+turns
+			   +unreachable;
 		       };
 	      };
-  priority_stack<Consideration,decltype(metric(food)),false> possibilities(metric(food));
+  priority_stack<Consideration,decltype(metric(food)),false,true> possibilities(metric(food));
   possibilities.push({{},game});
   while(!possibilities.empty()){
     auto trying=possibilities.pop();
@@ -366,45 +397,6 @@ Path AI(Snek const & game){
       if(!t_game.Alive())
 	continue;
       DBG("-- check reachable point "<<dir<<"\n");
-      if(true){//if(t_game.Body()[0]==food){
-	// Two moves required to prevent cutting at food (where
-	// everywhere is reachable but no move keeps that so).
-	bool safe_dir=false;
-	for (auto test_dir :
-	       {Direction::up, Direction::right,
-		  Direction::down, Direction::left})
-	  for (auto test_dir2 :
-		 {Direction::up, Direction::right,
-		    Direction::down, Direction::left}){
-	    Snek b_game(t_game);
-	    auto length=b_game.Body().size();
-	    auto volume=b_game.Size().first*b_game.Size().second;
-	    b_game.move(test_dir);
-	    if(b_game.Alive())
-	      if(length
-		 <=volume-unreachable_count(b_game.Body(),
-					    b_game.Body().front(),
-					    b_game.Size())){
-		b_game.move(test_dir2);
-		if(b_game.Alive())
-		  if(length
-		     <=volume-unreachable_count(b_game.Body(),
-						b_game.Body().front(),
-						b_game.Size())){
-		    safe_dir=true;
-		    break;
-		  }
-	      }
-	    if(safe_dir)
-	      break;
-	  }
-	if(!safe_dir)
-	  continue;
-      }
-
-      if(t_game.Body()[0]==food)
-	return p;
-      /*
       if (!reachable(t_game.Body(),t_game.Body().front(),t_game.Body().back(),t_game.Size()))
 	continue;
       DBG("-- check not-closed in point "<<dir<<"\n");
@@ -414,7 +406,6 @@ Path AI(Snek const & game){
 	  continue;
 	else
 	  return p;
-      */
       DBG("-- Adding consider point "<<dir<<"\n");
       DBG2(t_game.Body()[0],'.');
       possibilities.push({p,t_game});

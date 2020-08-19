@@ -75,14 +75,14 @@ std::pair<Termination,int> size_simulator_single(Point size) {
     }
     s.move(p.front());
     p.erase(p.begin(),p.begin()+1); // pop front
+    if(s.Body().size()==((size.first*size.second)&~1))
+      // Return to stop food generation failur.
+      // The last square isn't fillable in an odd grid.
+      return {Success,s.Body().size()};
   }
   if(!s.Alive())
     return {Death,s.Body().size()};
-  if(s.Body().size()==((size.first*size.second)&~1))
-    // The last square isn't fillable in an odd grid.
-    return {Success,s.Body().size()};
-  else
-    return {Giveup,s.Body().size()};
+  return {Giveup,s.Body().size()};
   }catch(std::exception e){
     return {Crash,s.Body().size()};
   }

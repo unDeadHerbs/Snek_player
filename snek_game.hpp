@@ -1,18 +1,24 @@
-#ifndef __SNEK_CLASS_HPP__
-#define __SNEK_CLASS_HPP__
+#ifndef SNEK_CLASS_HPP
+#define SNEK_CLASS_HPP
 #include <string>
 #include <utility>
 #include <vector>
-
 #include "Console-IO/ioconsole.hpp"
+
+#define BOX_CHAR 0
+
 
 typedef std::pair<uint, uint> Point;
 int distance(Point, Point, int);
 class Snek {
   Point size;
-  int length;
+  uint length;
   std::vector<Point> body; // [0] is head
+  #if BOX_CHAR
   std::vector<wchar_t> body_graphics; // [0] is head
+  #else
+  std::vector<char> body_graphics; // [0] is head
+  #endif
   Point food;
   int game_tick;
 
