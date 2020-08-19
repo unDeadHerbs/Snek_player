@@ -11,7 +11,11 @@
 #define DEBUG1 0
 #if DEBUG1
 #include <fstream>
-std::ofstream log_file;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wexit-time-destructors"
+#pragma clang diagnostic ignored "-Wglobal-constructors"
+static std::ofstream log_file;
+#pragma clang diagnostic pop
 #define DBG(X)								\
   do {									\
     log_file << X << std::flush;					\
@@ -358,8 +362,8 @@ Path AI(Snek const & game){
 			 auto b=con.game.Body();
 			 auto turns=count_turns(con.path);
 			 auto wiggles=count_wiggles(con.path);
-			 //auto goal_dist=snek_aware_distance(con.game,goal);
 			 auto goal_dist=distance(b[0],goal,1);
+			 auto goal_dist_smart=snek_aware_distance(con.game,goal);
 			 auto depth=int(con.path.size());
 			 auto unreachable=unreachable_count(b,b[0],
 							    con.game.Size());
@@ -367,6 +371,10 @@ Path AI(Snek const & game){
 			 if(depth<3)
 			   // escape the head
 			   return -1;
+			 if(goal_dist==goal_dist_smart)
+			   return
+			     goal_dist+depth
+			     +unreachable;
 			 // A* with a small weighting
 			 return
 			   goal_dist
