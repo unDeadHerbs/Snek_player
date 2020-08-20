@@ -146,3 +146,44 @@
    fundamentally bad exploring whole path based goals, such as the one
    described in the audio log, since it can't make variations on
    existing paths, it must instead discover the altered path.
+** 09851
+   Since the snake is a single wall and the surrounding wall is
+   closed, there can only ever be at most two distinct paths to the
+   goal.  One going left and one going right.  More precisely, There
+   is a path from the head to the goal and there is a path from the
+   head back to the head, and one can add or subtract the path from
+   the head to the head an arbitrary number of times to or from the
+   path to the goal.
+
+   This isn't precisely true, since as the snake moves the wall that
+   the snake is also moves, but the structure of that idea is still
+   true.
+
+   This leads to a different path finding idea.  Move from the head
+   along the body of the snake in both directions, making an envelope
+   of the body.  The path to any of these points is simple, just
+   follow the edge of the body (assuming the goal isn't trapped). This
+   can then be improved/reduced by shrinking the envelope when there
+   is a concave section.  From this one can then take the point on
+   this convex hull which is the closest to the goal (including the
+   path time to that point on the hull).  This path can then be
+   improved for other metrics by working backwards along it to enforce
+   the requirements, adding wiggles near the end to fill in pockets
+   that would be created (working from the end so that the tail
+   disappears into those pockets and removes some of the pockets from
+   needing solving).
+   
+   This only easily solves the question when the snake is below a
+   large portion of the map, once the snake is quite large the chance
+   of the goal appearing within a coil becomes important.  This can
+   either be prevented by not permitting gaps to appear, but that
+   requires a lot of work. [fn::if a cup of 2 depth and 3 width is
+   created then the filling of that will create a size 1 pocket, this
+   grows to larger and larger shapes that must be prevented.]  Once
+   the body is most of the structure using the Hamiltonian path that
+   the body has created for us keep all of the space reachable between
+   the head and the tail is a good solution.  Notably, if there are no
+   pockets, the rules to prevent pockets will already cause the head
+   to take detours to prevent pocket creation.  But again, this would
+   need to be careful since unfillable shapes can be formed and the
+   tail needs to be kept visible (within the only pocket).

@@ -412,7 +412,109 @@ auto mk_AI(std::function<
   return AI;
 }
 
-std::function<std::vector<Direction>(Snek const&)>Snek_AI(){
+std::function<std::vector<Direction>(Snek const&)>Snek_AI_go_right(){
+  typedef std::vector<Direction> Path;
+  typedef std::pair<Path,Snek> Consideration;
+  auto metric = [](Snek initial){
+		  auto goal=initial.Food();
+		  return [=](Consideration con)->int{
+			   auto& path=con.first;
+			   auto& game=con.second;
+			   auto b=game.Body();
+			   auto goal_dist=distance(b[0],goal,1);
+			   auto goal_dist_smart=snek_aware_distance(game,goal);
+			   auto depth=int(path.size());
+			   // If a path exists, take it.
+			   if(goal_dist==goal_dist_smart)
+			     return
+			       goal_dist+depth;
+			   // Else take the path as enumerated.
+			   return int(game.Size().first*game.Size().second);
+			 };
+		};
+  auto cutter = [](Snek){
+		  return [](Consideration con)->bool{
+			   auto&game =con.second;
+			   auto body=game.Body();// remove copy here?
+			   if(!game.Alive())
+			     return true;
+			   if (!reachable(body,body[0],body.back(),
+					  game.Size()))
+			     return true;
+			   return false;
+			 };
+		};
+  auto terminal=[](Snek initial){
+		  auto goal=initial.Food();
+		  return [=](Consideration con)->bool{
+			   auto&game=con.second;
+			   auto body=game.Body();// remove copy here?
+			   if(body[0]==goal)
+			     return true;
+			   return false;
+			 };
+		};
+  auto enumerator=[](Consideration con)->std::vector<Consideration>{
+    std::vector<Consideration> ret;
+    if(con.first.size()==0){
+      for (auto dir :
+	     {Direction::up, Direction::right, Direction::down, Direction::left}){
+	Path p(con.first);
+	Snek g(con.second);
+	p.push_back(dir);
+	g.move(dir);
+	ret.push_back({p,g});
+      }
+    }else switch(con.first.back()){
+      case Direction::none:
+      case Direction::up:
+	for (auto dir :
+	       {Direction::left, Direction::up,Direction::right}){
+	  Path p(con.first);
+	  Snek g(con.second);
+	  p.push_back(dir);
+	  g.move(dir);
+	  ret.push_back({p,g});
+	}
+	break;
+      case Direction::right:
+	for (auto dir :
+	       {Direction::up, Direction::right, Direction::down}){
+	  Path p(con.first);
+	  Snek g(con.second);
+	  p.push_back(dir);
+	  g.move(dir);
+	  ret.push_back({p,g});
+	}
+	break;
+      case Direction::down:
+	for (auto dir :
+	       {Direction::right, Direction::down, Direction::left}){
+	  Path p(con.first);
+	  Snek g(con.second);
+	  p.push_back(dir);
+	  g.move(dir);
+	  ret.push_back({p,g});
+	}
+	break;
+      case Direction::left:
+	for (auto dir :
+	       {Direction::down, Direction::left, Direction::up}){
+	  Path p(con.first);
+	  Snek g(con.second);
+	  p.push_back(dir);
+	  g.move(dir);
+	  ret.push_back({p,g});
+	}
+	break;
+      }
+    return ret;
+  };
+
+  return mk_AI<DFS,Snek,Direction>(metric,cutter,terminal,enumerator);
+}
+
+std::function<std::vector<Direction>(Snek const&)>Snek_AI_no_pockets(){
   typedef std::vector<Direction> Path;
   typedef std::pair<Path,Snek> Consideration;
   auto metric = [](Snek initial){
@@ -489,9 +591,10 @@ std::function<std::vector<Direction>(Snek const&)>Snek_AI(){
   return mk_AI<BFS,Snek,Direction>(metric,cutter,terminal,enumerator);
 }
 
-Path Snek_AI_modalish(Snek const & game){
-  auto food=game.Food();
-  CLEAR();
+/*
+std::function<std::vector<Direction>(Snek const&)> Snek_AI_modalish(){
+  typedef std::vector<Direction> Path;
+  typedef std::pair<Path,Snek> Consideration;
   auto metric=[](Point goal){
 		return [=](Consideration con)->int{
 			 auto b=con.game.Body();
@@ -579,3 +682,4 @@ Path Snek_AI_modalish(Snek const & game){
   DBG("No Path Found\n");
   return {};
 }
+*/

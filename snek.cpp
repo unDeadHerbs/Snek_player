@@ -26,7 +26,8 @@ void visual_simulator() {
   s.drawWalls(udh::cio);
   s.updateDisplay(udh::cio);
   DBG("Call to AI\n");
-  auto AI = Snek_AI();
+  //auto AI = Snek_AI_no_pockets();
+  auto AI = Snek_AI_go_right();
   auto p = AI(s);
   DBG("Got a path of length " << p.size() << "\n");
   while (s.Alive()) {
