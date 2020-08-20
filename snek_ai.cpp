@@ -412,6 +412,47 @@ auto mk_AI(std::function<
   return AI;
 }
 
+
+/*
+ * While the snake is short do something else that works.  Once the
+ * snake is a little longer (more than 2 times the longer side
+ * perhaps) make a storage of zig-zags at the far left end of the
+ * space, each time the snake leaves the space it will collect apples
+ * moving rightwards in the space (with some degree of leftward motion
+ * allowed for easy apples).  Then when it gets to the right end of
+ * the space it will move along the end wall to the top, move along to
+ * the left wall (grabbing apples that are directly down/up along the
+ * way).  Once at the left wall the snake will make a stack of
+ * zig-zags to re-capture the tail.  The depth of this stack will be
+ * until the tail has reached the right wall, so that it will be out
+ * of the way for the next pass.  This may need modifying if the
+ * down/up grabs are in the way or not.  It may also be plausible for
+ * the snake to leave the stack while the tail is only half way to the
+ * right wall if it will reach the right wall by the time the head
+ * reaches it.  This will require either some probabilities or some
+ * stats to tune.
+ */
+//std::function<std::vector<Direction>(Snek const&)>Snek_AI_zags_storage(){}
+
+/*
+ * This is a very fast to calculate and simple metric.  Similar to how
+ * one can solve most mazes by following the right wall, this snake
+ * assumes that its body is a maze and follows the right wall.  There
+ * are two exceptions to this: 1, if the apple is within one turn the
+ * snake will go take it; and 2, if a move would trap the snake (put
+ * its head in a room without its tail) then the snake won't take it.
+ * Since the entire path to the next apple is calculated before moving
+ * this second rule means that a small tree is explored.
+ *
+ * TODO: Make a variant of this that builds small zigzag piles in square-
+ * ish free spaces.  This will reduce the size of and help destroy the
+ * structures that this algorithm tends to make, which are slow to navigate.
+ * (I'm not sure that the zags will be faster than the structures, since they
+ * will also need navigating, but I'm hoping that they will be avoidable and can
+ * be ignored/rebuilt more frequently, making them more ephemeral and not needing
+ * of avoidance.  It may be the case that the interlocking structures decrease
+ * the average time to the next apple.)
+ */
 std::function<std::vector<Direction>(Snek const&)>Snek_AI_go_right(){
   typedef std::vector<Direction> Path;
   typedef std::pair<Path,Snek> Consideration;
@@ -429,7 +470,9 @@ std::function<std::vector<Direction>(Snek const&)>Snek_AI_go_right(){
 			     return
 			       goal_dist+depth;
 			   // Else take the path as enumerated.
-			   return int(game.Size().first*game.Size().second);
+			   return int(game.Size().first*game.Size().second)+
+			     depth/int(game.Size().first*game.Size().second);
+			   // If the path is longer than the map, check for alternatives.
 			 };
 		};
   auto cutter = [](Snek){
@@ -440,7 +483,8 @@ std::function<std::vector<Direction>(Snek const&)>Snek_AI_go_right(){
 			     return true;
 			   if (!reachable(body,body[0],body.back(),
 					  game.Size()))
-			     return true;
+			     if(body.size()<game.Size().first*game.Size().second-1)
+			       return true;
 			   return false;
 			 };
 		};
