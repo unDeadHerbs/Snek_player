@@ -1,3 +1,3 @@
 #include "snek_game.hpp"
-typedef std::vector<Snek::Direction> Path;
-Path AI(Snek const &);
+#include <functional>
+std::function<std::vector<Snek::Direction>(Snek const &)>Snek_AI();

@@ -21,14 +21,12 @@ std::ofstream log_file;
 #include "Console-IO/ioconsole.hpp"
 
 void visual_simulator() {
-#if DEBUG1
-  log_file = std::ofstream("trying.log", std::ios::out | std::ios::trunc);
-#endif
   DBG("Starting Visual Simulator\n");
   Snek s(udh::cio.size());
   s.drawWalls(udh::cio);
   s.updateDisplay(udh::cio);
   DBG("Call to AI\n");
+  auto AI = Snek_AI();
   auto p = AI(s);
   DBG("Got a path of length " << p.size() << "\n");
   while (s.Alive()) {

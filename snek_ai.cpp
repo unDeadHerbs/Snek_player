@@ -14,7 +14,7 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wexit-time-destructors"
 #pragma clang diagnostic ignored "-Wglobal-constructors"
-static std::ofstream log_file;
+static std::ofstream log_file("trying.log", std::ios::out | std::ios::trunc);
 #pragma clang diagnostic pop
 #define DBG(X)								\
   do {									\
@@ -177,7 +177,7 @@ bool reachable(std::vector<Point>const walls,Point from, Point to,Point boarder)
   return reachable_flood(walls,from,to,boarder);
 }
 
-int count_turns(Path path) {
+int count_turns(std::vector<Direction> path) {
   auto c = 0;
   if(path.empty())return 0;
   Direction last_dir = path.front();
@@ -187,7 +187,7 @@ int count_turns(Path path) {
   return c;
 }
 
-int count_wiggles(Path path) {
+int count_wiggles(std::vector<Direction> path) {
   int c = 0;
   if(path.empty())return 0;
   Direction last_dir = path.front();
@@ -349,77 +349,140 @@ public:
   }
 };
 
-struct Consideration{
-  Path path;
-  Snek game;
-};
+enum SearchStyle{DFS,BFS};
+/*
+template<SearchStyle SS,typename State,typename Action>
+auto mk_AI(int (*(*metric(State)))(std::pair<std::vector<Action>,State>),
+	   bool (*(*should_cut(State)))(std::pair<std::vector<Action>,State>),
+	   bool (*(*is_done(State)))(std::pair<std::vector<Action>,State>),
+	   std::vector<std::pair<std::vector<Action>,State>>
+	       (*enumerate)(std::pair<std::vector<Action>,State>)){
+*/
+template<SearchStyle SS,typename State,typename Action>
+auto mk_AI(std::function<
+	      std::function<
+	         int(std::pair<std::vector<Action>,State>)>
+	      (State)> metric,
+	   std::function<
+	      std::function<
+	         bool(std::pair<std::vector<Action>,State>)>
+	      (State)> should_cut,
+	   std::function<
+	      std::function<
+	         bool(std::pair<std::vector<Action>,State>)>
+	      (State)> is_done,
+	   std::function<
+	      std::vector<std::pair<std::vector<Action>,State>>
+	      (std::pair<std::vector<Action>,State>)>
+	      enumerate){
+  auto  AI=[=](State const & state)->std::vector<Action>{
+        typedef std::vector<Action> Path;
+	typedef std::pair<Path,State> Consideration;
+	auto cutter=should_cut(state);
+	auto success=is_done(state);
+	priority_stack<Consideration,std::function<int(Consideration)>,false,SS==BFS>
+	    possibilities(metric(state));
+	possibilities.push({Path(),state});
+	while(!possibilities.empty()){
+	  auto trying=possibilities.pop();
+	  DBG("- Checking if only one root\n");
+	  if(possibilities.empty())
+	    if(trying.first!=Path()){
+	      DBG("-- Shortcutting\n");
+	      // since all must descend from this, lets advance the board
+	      return trying.first;
+	    }
+	  DBG("Enumerating\n");
+	  for (auto opt : enumerate(trying)) {
+	    DBG("-- Cutting\n");
+	    if(cutter(opt))
+	      continue;
+	    DBG("-- Check if done\n");
+	    if(success(opt))
+	      return opt.first;
+	    DBG("-- Push into possibilities");
+	    possibilities.push(opt);
+	  }
+	}
+	DBG("- No Path Found\n");
+	return {};
+  };
+  return AI;
+}
 
-Path AI(Snek const & game){
-  auto food=game.Food();
-  CLEAR();
-  auto metric=[](Point goal){
-		return [=](Consideration con)->int{
-			 auto b=con.game.Body();
-			 auto turns=count_turns(con.path);
-			 auto wiggles=count_wiggles(con.path);
-			 auto goal_dist=distance(b[0],goal,1);
-			 auto goal_dist_smart=snek_aware_distance(con.game,goal);
-			 auto depth=int(con.path.size());
-			 auto unreachable=unreachable_count(b,b[0],
-							    con.game.Size());
-
-			 if(depth<3)
-			   // escape the head
-			   return -1;
-			 if(goal_dist==goal_dist_smart)
+std::function<std::vector<Direction>(Snek const&)>Snek_AI(){
+  typedef std::vector<Direction> Path;
+  typedef std::pair<Path,Snek> Consideration;
+  auto metric = [](Snek initial){
+		  auto goal=initial.Food();
+		  return [=](Consideration con)->int{
+			   auto& path=con.first;
+			   auto& game=con.second;
+			   auto b=game.Body();
+			   auto turns=count_turns(path);
+			   auto wiggles=count_wiggles(path);
+			   auto goal_dist=distance(b[0],goal,1);
+			   auto goal_dist_smart=snek_aware_distance(game,goal);
+			   auto depth=int(path.size());
+			   auto unreachable=unreachable_count(b,b[0],
+							      game.Size());
+			   if(depth<3)
+			     // escape the head
+			     return -1;
+			   if(goal_dist==goal_dist_smart)
+			     return
+			       goal_dist+depth
+			       +unreachable;
+			   // A* with a small weighting
 			   return
-			     goal_dist+depth
+			     goal_dist
+			     +10*(goal_dist+depth)
+			     +wiggles+turns
 			     +unreachable;
-			 // A* with a small weighting
-			 return
-			   goal_dist
-			   +10*(goal_dist+depth)
-			   +wiggles+turns
-			   +unreachable;
-		       };
-	      };
-  priority_stack<Consideration,decltype(metric(food)),false,true> possibilities(metric(food));
-  possibilities.push({{},game});
-  while(!possibilities.empty()){
-    auto trying=possibilities.pop();
-    if(possibilities.empty())
-      if(trying.path.size()){ // since all must descend from this, lets advance the board
-	DBG("-- Short Cutting\n");
-	return trying.path;
-      }
-    DBG("- considering point\n");
-    DBG2(trying.game.Body()[0],'_');
+			 };
+		};
+  auto cutter = [](Snek initial){
+		  auto goal=initial.Food();
+		  return [=](Consideration con)->bool{
+			   auto&game =con.second;
+			   auto body=game.Body();// remove copy here?
+			   if(!game.Alive())
+			     return true;
+			   if (!reachable(body,body[0],body.back(),
+					  game.Size()))
+			     return true;
+			   if(body[0]==goal)
+			     if(wall_count(body,goal,game.Size())>2
+				and distance(goal,body.back(),1)<3)
+			       // If eating the food would (probably) cut us off, don't.
+			       return true;
+			   return false;
+			 };
+		};
+  auto terminal=[](Snek initial){
+		  auto goal=initial.Food();
+		  return [=](Consideration con)->bool{
+			   auto&game=con.second;
+			   auto body=game.Body();// remove copy here?
+			   if(body[0]==goal)
+			     if(!(wall_count(body,goal,game.Size())>2
+				  and distance(goal,body.back(),1)<3))
+			       return true;
+			   return false;
+			 };
+		};
+  auto enumerator=[](Consideration con)->std::vector<Consideration>{
+    std::vector<Consideration> ret;
     for (auto dir :
-	   {Direction::up, Direction::right, Direction::down, Direction::left}) {
-      DBG("-- consider point "<<dir<<"\n");
-      Snek t_game(trying.game);
-      Path p(trying.path);
-      t_game.move(dir);
-      p.push_back(dir);
-      DBG("-- check alive point "<<dir<<"\n");
-      if(!t_game.Alive())
-	continue;
-      DBG("-- check reachable point "<<dir<<"\n");
-      if (!reachable(t_game.Body(),t_game.Body().front(),t_game.Body().back(),t_game.Size()))
-	continue;
-      DBG("-- check not-closed in point "<<dir<<"\n");
-      if(t_game.Body()[0]==food)
-	if(wall_count(t_game.Body(),food,t_game.Size())>2 and distance(food,t_game.Body().back(),1)<3)
-	  // If eating the food would (probably) cut us off, don't.
-	  continue;
-	else
-	  return p;
-      DBG("-- Adding consider point "<<dir<<"\n");
-      DBG2(t_game.Body()[0],'.');
-      possibilities.push({p,t_game});
+       {Direction::up, Direction::right, Direction::down, Direction::left}){
+          Path p(con.first);
+	  Snek g(con.second);
+	  p.push_back(dir);
+	  g.move(dir);
+          ret.push_back({p,g});
     }
-    DBG2(trying.game.Body()[0],',');
-  }
-  DBG("No Path Found\n");
-  return {};
+    return ret;
+  };
+
+  return mk_AI<BFS,Snek,Direction>(metric,cutter,terminal,enumerator);
 }
