@@ -349,6 +349,8 @@ public:
   }
 };
 
+
+
 enum SearchStyle{DFS,BFS};
 /*
 template<SearchStyle SS,typename State,typename Action>
@@ -485,4 +487,95 @@ std::function<std::vector<Direction>(Snek const&)>Snek_AI(){
   };
 
   return mk_AI<BFS,Snek,Direction>(metric,cutter,terminal,enumerator);
+}
+
+Path Snek_AI_modalish(Snek const & game){
+  auto food=game.Food();
+  CLEAR();
+  auto metric=[](Point goal){
+		return [=](Consideration con)->int{
+			 auto b=con.game.Body();
+			 auto turns=count_turns(con.path);
+			 auto goal_dist=snek_aware_distance(con.game,goal);
+			 auto goal_lin_dist=distance(b[0],goal,1);
+			 auto tail_dist=snek_aware_distance(con.game,b.back());
+			 auto tail_lin_dist=distance(b[0],b.back(),1);
+			 auto depth=con.path.size();
+			 auto is_simple_path=(goal_dist==goal_lin_dist);
+
+			 if(depth<3)
+			   // escape the head
+			   return -200000+depth;
+			 if(is_simple_path)
+			   // take simple path with small preference to developed paths
+			   return -100000+10.1*goal_dist+10*depth;
+			 // TODO: (-1)*size.first * size.second?
+			 if(!reachable(b,b[0],goal,con.game.Size()))
+			   // follow tail until better
+			   return -500+tail_dist+depth*10/b.size();
+			 if(body_to_goal_dist(b,goal)<goal_dist)
+			   // follow tail
+			   return -500+tail_dist-depth;
+
+			 int follow_tail_if_near      =  -80 * ((tail_dist<5)
+								* !is_simple_path * (b.size()>goal_dist));
+			 int distance_guess           =   40 * (goal_dist+depth);
+			 int less_distance_if_wiggles =  -30 * goal_dist*(turns>10)*(turns<b.size()/4);
+			 int follow_walls             =   30 * wall_count(b,b[0],con.game.Size());
+			 // TODO: Make follow_walls a property of the path not the head.
+			 // int avoid_small_bubbles   =   20 * bubble_count(con.game);
+			 int unprefer_undeveloped     =   15 * goal_dist;
+			 int prefer_developed_paths   =  -10 * depth;
+			 int prefer_lots_of_turns     =  -15 * turns*(turns>5);
+			 int prefer_less_turns        =   10 * (turns/(depth/20+1)
+								+b[0].first!=goal.first+b[0].second!=goal.second);
+			 int when_lost_find_tail      =   -1 * (tail_lin_dist+tail_dist);
+			 int developed_simple_path    =    1 * goal_dist * (goal_dist==goal_lin_dist);
+
+			 return
+			   distance_guess+prefer_less_turns+when_lost_find_tail
+			   +prefer_developed_paths +follow_walls+prefer_lots_of_turns
+			   +less_distance_if_wiggles+follow_tail_if_near+unprefer_undeveloped
+			   +developed_simple_path;
+		       };
+	      };
+  priority_stack<Consideration,decltype(metric(food)),false> possibilities(metric(food));
+  possibilities.push({{},game});
+  while(!possibilities.empty()){
+    auto trying=possibilities.pop();
+    if(possibilities.empty())
+      if(trying.path.size()){ // since all must descend from this, lets advance the board
+	DBG("-- Short Cutting\n");
+	return trying.path;
+      }
+    DBG("- considering point\n");
+    DBG2(trying.game.Body()[0],'_');
+    for (auto dir :
+	   {Direction::up, Direction::right, Direction::down, Direction::left}) {
+      DBG("-- consider point "<<dir<<"\n");
+      Snek t_game(trying.game);
+      Path p(trying.path);
+      t_game.move(dir);
+      p.push_back(dir);
+      DBG("-- check alive point "<<dir<<"\n");
+      if(!t_game.Alive())
+	continue;
+      DBG("-- check reachable point "<<dir<<"\n");
+      if (!reachable(t_game.Body(),t_game.Body().front(),t_game.Body().back(),t_game.Size()))
+	continue;
+      DBG("-- check not-closed in point "<<dir<<"\n");
+      if(t_game.Body()[0]==food)
+	if(wall_count(t_game.Body(),food,t_game.Size())>2 and distance(food,t_game.Body().back(),1)<3)
+	  // If eating the food would (probably) cut us off, don't.
+	  continue;
+	else
+	  return p;
+      DBG("-- Adding consider point "<<dir<<"\n");
+      DBG2(t_game.Body()[0],'.');
+      possibilities.push({p,t_game});
+    }
+    DBG2(trying.game.Body()[0],',');
+  }
+  DBG("No Path Found\n");
+  return {};
 }
