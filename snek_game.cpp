@@ -9,13 +9,12 @@
 // Point functions
 
 int distance(Point const L, Point const R, int const metric) {
-  auto const x_delta=abs(int(L.first) - int(R.first));
-  auto const y_delta=abs(int(L.second) - int(R.second));
+  auto const x_delta = abs(int(L.first) - int(R.first));
+  auto const y_delta = abs(int(L.second) - int(R.second));
   if (metric == 1)
-    return  x_delta+y_delta;
+    return x_delta + y_delta;
   if (metric == 2)
-    return abs(int(std::sqrt(x_delta * x_delta +
-			     y_delta * y_delta)));
+    return abs(int(std::sqrt(x_delta * x_delta + y_delta * y_delta)));
   return std::max<int>(
       abs(int(std::pow(std::pow(abs(int(L.first) - int(R.first)), metric) +
                            std::pow(abs(int(L.second) - int(R.second)), metric),
@@ -26,10 +25,8 @@ int distance(Point const L, Point const R, int const metric) {
 // Snek Functions
 
 Point rand_point(Point min, Point max) {
-  return {
-	  std::rand() % int(max.first - min.first + 1) + int(min.first),
-	  std::rand() % int(max.second - min.second + 1) + int(min.second)
-  };
+  return {std::rand() % int(max.first - min.first + 1) + int(min.first),
+          std::rand() % int(max.second - min.second + 1) + int(min.second)};
 }
 
 Snek::Snek(Point siz) : size(siz) {
@@ -99,83 +96,83 @@ bool Snek::move(Direction movement_input) {
   case up:
     body.insert(body.begin(), {body[0].first - 1, body[0].second});
     body_graphics.insert(body_graphics.begin(), '^');
-    if(body_graphics.size()>1)
-      switch(body_graphics[1]){
+    if (body_graphics.size() > 1)
+      switch (body_graphics[1]) {
       case '^':
-	body_graphics[1]=BOX_CHAR?0x2502:'|';
-	break;
+        body_graphics[1] = BOX_CHAR ? 0x2502 : '|';
+        break;
       case '>':
-	body_graphics[1]=BOX_CHAR?0x2518:'/';
-	break;
+        body_graphics[1] = BOX_CHAR ? 0x2518 : '/';
+        break;
       case 'v':
-	break;
+        break;
       case '<':
-	body_graphics[1]=BOX_CHAR?0x2514:'\\';
-	break;
+        body_graphics[1] = BOX_CHAR ? 0x2514 : '\\';
+        break;
       }
     break;
   case right:
     body.insert(body.begin(), {body[0].first, body[0].second + 1});
     body_graphics.insert(body_graphics.begin(), '>');
-    if(body_graphics.size()>1)
-      switch(body_graphics[1]){
+    if (body_graphics.size() > 1)
+      switch (body_graphics[1]) {
       case '^':
-	body_graphics[1]=BOX_CHAR?0x250c:'/';
-	break;
+        body_graphics[1] = BOX_CHAR ? 0x250c : '/';
+        break;
       case '>':
-	body_graphics[1]=BOX_CHAR?0x2500:'-';
-	break;
+        body_graphics[1] = BOX_CHAR ? 0x2500 : '-';
+        break;
       case 'v':
-	body_graphics[1]=BOX_CHAR?0x2514:'\\';
-	break;
+        body_graphics[1] = BOX_CHAR ? 0x2514 : '\\';
+        break;
       case '<':
-	break;
+        break;
       }
     break;
   case down:
     body.insert(body.begin(), {body[0].first + 1, body[0].second});
     body_graphics.insert(body_graphics.begin(), 'v');
-    if(body_graphics.size()>1)
-      switch(body_graphics[1]){
+    if (body_graphics.size() > 1)
+      switch (body_graphics[1]) {
       case '^':
-	break;
+        break;
       case '>':
-	body_graphics[1]=BOX_CHAR?0x2510:'\\';
-	break;
+        body_graphics[1] = BOX_CHAR ? 0x2510 : '\\';
+        break;
       case 'v':
-	body_graphics[1]=BOX_CHAR?0x2502:'|';
-	break;
+        body_graphics[1] = BOX_CHAR ? 0x2502 : '|';
+        break;
       case '<':
-	body_graphics[1]=BOX_CHAR?0x250c:'/';
-	break;
+        body_graphics[1] = BOX_CHAR ? 0x250c : '/';
+        break;
       }
     break;
   case left:
     body.insert(body.begin(), {body[0].first, body[0].second - 1});
-    body_graphics.insert(body_graphics.begin(),'<');
-    if(body_graphics.size()>1)
-      switch(body_graphics[1]){
+    body_graphics.insert(body_graphics.begin(), '<');
+    if (body_graphics.size() > 1)
+      switch (body_graphics[1]) {
       case '^':
-	body_graphics[1]=BOX_CHAR?0x2510:'\\';
-	break;
+        body_graphics[1] = BOX_CHAR ? 0x2510 : '\\';
+        break;
       case '>':
-	break;
+        break;
       case 'v':
-	body_graphics[1]=BOX_CHAR?0x2518:'/';
-	break;
+        body_graphics[1] = BOX_CHAR ? 0x2518 : '/';
+        break;
       case '<':
-	body_graphics[1]=BOX_CHAR?0x2500:'-';
-	break;
+        body_graphics[1] = BOX_CHAR ? 0x2500 : '-';
+        break;
       }
     break;
   }
-  if (body[0] == food){
+  if (body[0] == food) {
     while (std::find(body.begin(), body.end(), food) !=
-	   body.end()) // Generate a new food.
+           body.end()) // Generate a new food.
       food = rand_point({1, 1}, {size.first - 1, size.second - 1});
-    length+=1; // Amount grown by each food.
+    length += 1; // Amount grown by each food.
   }
-  while(body.size()>length){
+  while (body.size() > length) {
     body.pop_back(); // Don't get longer by one.
     body_graphics.pop_back();
   }
