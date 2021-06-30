@@ -1,0 +1,111 @@
+# -*- Mode: org; indent-tabs-mode: 'nil; eval: (centered-cursor-mode); eval: (auto-fill-mode); eval: (flyspell-mode); eval: (add-hook 'after-save-hook (lambda () (org-beamer-export-to-pdf)) 't 't) eval: (setq org-confirm-babel-evaluate (lambda (lang body) (not (string= lang "dot")))) -*-
+#+STARTUP: showstars indent inlineimages beamer
+#+PROPERTY: header-args:python :session :tangle code.py
+
+#+TITLE: Snake AI & Testing Framework
+#+SUBTITLE: "What I Did on My Summer Holiday"
+#+AUTHOR: Murray Fordyce
+#+OPTIONS: H:2 num:t toc:nil
+#+latex_class: beamer
+#+LaTeX_CLASS_OPTIONS: [presentation,bigger]
+# (setq org-beamer-frame-level 2)
+#+BEAMER_FRAME_LEVEL: 2
+#+LaTeX_HEADER: \usepackage{indentfirst}
+#+LaTeX_HEADER: \usepackage{breakcites}
+#+LaTeX_HEADER: \usepackage{paralist}
+#+LaTeX_HEADER: \usepackage{units}
+#+LaTeX_HEADER: \usepackage{listings}
+#+LaTeX_HEADER: \let\itemize\compactitem
+#+LaTeX_HEADER: \let\description\compactdesc
+#+LaTeX_HEADER: \let\enumerate\compactenum
+
+#+LaTeX_HEADER: \usepackage{tikz}
+#+LaTeX_HEADER: \usetikzlibrary{arrows.meta}
+#+LaTeX_HEADER: \usetikzlibrary{positioning}
+#+LaTeX_HEADER: \usepackage{xmpmulti}
+
+#+LaTeX_HEADER: \newcommand{\divides}{\mid}
+#+LaTeX_HEADER: \newcommand{\notdivides}{\nmid}
+#+LaTeX_HEADER: \setbeamertemplate{footline}[frame number]
+
+* Presentation
+** Abstract
+*** Original Goals
+- Quantitative Analyses of Different AI Strategies 
+*** Background
+- What is Snake
+- Motivation
+*** Design - Chronological
+- Ncurses
+- Snake Game
+- First AI
+- Further AIs and Tools
+** What is Snake?
+[[./snek-40.png]]
+*** Words :noexport:
+I presume everyone here knows what snake is; but, if you don't.  It's
+a lightrider-esq where you're a snake and have to eat apples while
+avoiding your tail.  This is made harder by your tail getting longer
+as you eat more apples.
+** Motivation
+*** XKCD 356 - Nerd Sniping
+[[./nerd_sniping.png]]
+** Ncurses (Console Graphics)
+- Familiar
+- Previous Project (\color{blue}[[https://github.com/unDeadHerbs/Console-IO][Github]]\color{black})
+- Not Event Based
+** The Game Class
+*** Data
+- Board Size
+- Snake Length
+- List of Body Points
+- List of Pre-Rendered Body "Tiles"
+- Apple Location
+- Game Ticks
+*** Methods
+- Render
+- Move
+*** Other
+- Enum for directions
+
+
+#+LaTeX: \begin{flushright}
+\color{blue}[[https://github.com/unDeadHerbs/Snek_player/blob/master/snek_game.hpp][GitHub]]
+#+LaTeX: \end{flushright}
+** First AI
+#+aLaTeX: \vfill
+*** Using A*
+- Canonical Search Algorithm
+- Simple
+- Test The Framework
+- Surprisingly Good
+
+
+#+LaTeX: \vfill
+#+LaTeX: \vfill
+#+LaTeX: \begin{flushright}
+\color{blue}[[https://github.com/unDeadHerbs/Snek_player/blob/79c6553/snek_main.cpp#L62][GitHub]]
+#+LaTeX: \end{flushright}
+** Testing and Debugging Framework :noexport:
+- Move and Apple Counter in Corner
+- Able to swap in and out the AI at the top level
+** Further AIs and Tools
+*** Generalized Tree Search
+- Cost Metrics
+- Early Cutting
+*** Tools to Inspect AI
+- Plan Map
+- Logging Framework
+*** Collection of Metrics
+- Inspection of Game's State (AI Agnostic)
+- Isolated in Driver
+** Distractions, Biases, and Future Work
+*** Distractions
+- Making a Single Better AI
+*** Biases
+- I Prefer GOFAI
+*** Future Work
+- Metric for Worst/Average Decision Time
+- Threaded Simulation
+- More Simple AIs
+- Adversarial Apple Placement
