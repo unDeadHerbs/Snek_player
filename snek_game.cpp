@@ -85,6 +85,34 @@ void Snek::updateDisplay(decltype(udh::cio) o) const {
   usleep(sleep_time);
 }
 
+void Snek::place_food() {
+  switch (difficulty) {
+  case 1: {
+    uint dif = 0;
+    while (std::find(body.begin(), body.end(), food) !=
+           body.end()) // Generate a valid food placement just in case.
+      food = rand_point({1, 1}, {size.first - 1, size.second - 1});
+    for (uint x = 1; x <= size.first; x++)
+      for (uint y = 1; y <= size.second; y++)
+        if (std::find(body.begin(), body.end(), decltype(food){x, y}) ==
+            body.end()) {
+          uint d = 1;
+          if (d > dif) {
+            dif = d;
+            food = {x, y};
+          }
+          // else if(d==diff) pic random between options, might need to be a
+          // set for picking from afterwards.
+        }
+  } break;
+  case 0:
+  default:
+    while (std::find(body.begin(), body.end(), food) !=
+           body.end()) // Generate a new food.
+      food = rand_point({1, 1}, {size.first - 1, size.second - 1});
+  }
+}
+
 bool Snek::move(Direction movement_input) {
   game_tick++;
   // TOOD: return check for body
@@ -167,9 +195,7 @@ bool Snek::move(Direction movement_input) {
     break;
   }
   if (body[0] == food) {
-    while (std::find(body.begin(), body.end(), food) !=
-           body.end()) // Generate a new food.
-      food = rand_point({1, 1}, {size.first - 1, size.second - 1});
+    place_food();
     length += 1; // Amount grown by each food.
   }
   while (body.size() > length) {

@@ -13,12 +13,15 @@ class Snek {
   Point size;
   uint length;
   std::deque<Point> body; // [0] is head
+  unsigned int difficulty = 1;
+  // 0 = random placement
+  // 1 = adversarial placement
 #if BOX_CHAR
   std::deque<wchar_t> body_graphics; // [0] is head
 #else
-                          // TODO: Make this optional some how, the AI doesn't
-                          // need this on
-                          // its internal copies.
+  // TODO: Make this optional some how, the AI doesn't
+  // need this on
+  // its internal copies.
   std::deque<char> body_graphics; // [0] is head
 #endif
   Point food;
@@ -28,6 +31,7 @@ public:
   auto Size() const { return size; }
   auto Body() const { return body; }
   auto Food() const { return food; }
+  void set_difficulty(unsigned int d) { difficulty = d; }
 
 public:
   typedef enum { none, up, right, down, left } Direction;
@@ -36,6 +40,7 @@ public:
 private:
   Direction direction;
   bool alive;
+  void place_food();
 
 public: // Not sure about this
   void drawWalls(decltype(udh::cio)) const;
