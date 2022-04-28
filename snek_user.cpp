@@ -1,8 +1,6 @@
 #include "snek_ai.hpp"
 #include "snek_game.hpp"
 
-#define VISUAL 1
-
 #define DEBUG1 0
 #if DEBUG1
 #include <fstream>
@@ -17,96 +15,33 @@ std::ofstream log_file;
   } while (0)
 #endif
 
-#if VISUAL
 #include "Console-IO/ioconsole.hpp"
 
-void visual_simulator() {
+Snek::Direction get_move(Snek s /*temp for using AI in testing.*/) {
+  // static Snek::Direction move = Snek::Direction::right;
+  // delay
+
+  // read user input.
+  // - Discard all but the most recent arrow key.
+  // Space is pause.
+  // If no input is ready, return the last used input.
+  auto AI = Snek_AI_go_right();
+  auto moves = AI(s);
+  return moves.front();
+}
+
+void game_loop() {
   DBG("Starting Visual Simulator\n");
   Snek s(udh::cio.size());
   s.drawWalls(udh::cio);
-  s.updateDisplay(udh::cio);
-  DBG("Call to AI\n");
-  // auto AI = Snek_AI_no_pockets();
-  auto AI = Snek_AI_go_right();
-  auto p = AI(s);
-  DBG("Got a path of length " << p.size() << "\n");
   while (s.Alive()) {
-    if (!p.size()) {
-      DBG("\n\nNext Food\n");
-      p = AI(s);
-      DBG("Moving\n");
-      DBG("Current fill = " << s.Body().size() << "/"
-                            << s.Size().first * s.Size().second << "\n");
-    }
-    if (!p.size()) {
-      DBG("No Path\n");
-      break;
-    }
-    s.move(p.front());
-    p.erase(p.begin(), p.begin() + 1); // pop front
     s.updateDisplay(udh::cio);
+    s.move(get_move(s));
   }
+  s.updateDisplay(udh::cio);
 }
-
-#else
-
-enum Termination { Success, Crash, Death, Giveup };
-
-std::pair<Termination, int> size_simulator_single(Point size) {
-#if DEBUG1
-  log_file = std::ofstream("trying.log", std::ios::out | std::ios::trunc);
-#endif
-  DBG("Starting Size Simulator (" << size.first << "," << size.second << ")\n");
-  Snek s(size);
-  DBG("Call to AI\n");
-  auto p = AI(s);
-  DBG("Got a path of length " << p.size() << "\n");
-  try {
-    while (s.Alive()) {
-      if (!p.size()) {
-        DBG("\n\nNext Food\n");
-        p = AI(s);
-        DBG("Moving\n");
-        DBG("Current fill = " << s.Body().size() << "/"
-                              << s.Size().first * s.Size().second << "\n");
-      }
-      if (!p.size()) {
-        DBG("No Path\n");
-        break;
-      }
-      s.move(p.front());
-      p.erase(p.begin(), p.begin() + 1); // pop front
-      if (s.Body().size() == ((size.first * size.second) & ~1))
-        // Return to stop food generation failur.
-        // The last square isn't fillable in an odd grid.
-        return {Success, s.Body().size()};
-    }
-    if (!s.Alive())
-      return {Death, s.Body().size()};
-    return {Giveup, s.Body().size()};
-  } catch (std::exception e) {
-    return {Crash, s.Body().size()};
-  }
-}
-
-#include <iostream>
-
-void size_simulator(Point max_size) {
-  for (int x = 2; x < max_size.first; x++)
-    for (int y = x; y < max_size.second; y++) {
-      auto res = size_simulator_single({x, y});
-      std::cout << "(" << x << "," << y << ") = {" << res.first << ","
-                << res.second << "}" << std::endl;
-    }
-}
-
-#endif
 
 int main() {
-#if VISUAL
-  visual_simulator();
-#else
-  size_simulator({7, 7});
-#endif
+  game_loop();
   return 0;
 }
