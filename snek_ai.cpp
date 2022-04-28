@@ -772,3 +772,24 @@ distance(food,t_game.Body().back(),1)<3)
   return {};
 }
 */
+
+/*
+ * 10165: There are two major flaws left in the above AIs and they are
+ * rather similar.  In the early game the snake will cut the map with
+ * it's body, causing the next apple to take a very long time to
+ * reach; and, in the late game, the snake will leave single pockets
+ * of the map unreachable (sometimes they can be saved with lots of
+ * wiggling but sometimes they are never recoverable).  Both of these
+ * can be solved with metrics based on the number, sizes, and other
+ * properties of regions on the map.  My proposed two metrics here
+ * are: 1) The size of the region (as a proportion of the non-snake
+ * squares) times the number of ticks it will live for.  So, if the
+ * head touching near the tail it will be punished very little as it
+ * won't take long for the region to rejoin the main.  This may
+ * require a much more complex model later, but a simple version
+ * should be find to start. 2) If a "small" region is to be created,
+ * punish more the smaller it is.  For each cell less than 100(?) that
+ * a region is, punish by how close to the end game (snake percent of
+ * map), how many regions (more is much worse), and something with how
+ * hard to repair it will be (perhaps the above life time metric).
+ */

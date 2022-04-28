@@ -1,3 +1,5 @@
+This is a both a testing ground for new snake algorithms and a user playable game.
+
 * Notes
 ** 09846
   In [[https://www.youtube.com/watch?v=TOpBcfbAgPg][How to Win Snake: The UNKILLABLE Snake AI]] AlphaPhoenix is

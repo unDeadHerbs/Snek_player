@@ -16,6 +16,9 @@ class Snek {
 #if BOX_CHAR
   std::deque<wchar_t> body_graphics; // [0] is head
 #else
+                          // TODO: Make this optional some how, the AI doesn't
+                          // need this on
+                          // its internal copies.
   std::deque<char> body_graphics; // [0] is head
 #endif
   Point food;
@@ -41,6 +44,7 @@ public: // Not sure about this
 public:
   Snek(Point);
   bool Alive() const { return alive; }
+  // TODO: rewrite this as returning a new state using immer
   bool move(Direction movement = none);
 };
 
